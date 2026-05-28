@@ -5,8 +5,16 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.os.*
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.example.smsalert.data.dao.AlertDao
+import com.example.smsalert.data.entity.AlertRecord
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class AlertService : Service() {
@@ -15,9 +23,12 @@ class AlertService : Service() {
         const val CHANNEL_ID = "alert_channel"
     }
 
+    @Inject lateinit var alertDao: AlertDao
+
     private var wakeLock: PowerManager.WakeLock? = null
     private var ringtone: android.media.Ringtone? = null
     private var isActive = false
+    private val serviceScope = CoroutineScope(Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
@@ -28,6 +39,17 @@ class AlertService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val msg = intent?.getStringExtra("msg") ?: ""
         LogStore.i("AlertService onStartCommand: ${msg.take(30)}...")
+
+        // Persist alert to Room
+        serviceScope.launch {
+            try {
+                val source = if (msg.contains("模拟报警测试")) "test" else "sms"
+                alertDao.insert(AlertRecord(message = msg, source = source))
+                LogStore.d("警报记录已保存到数据库")
+            } catch (e: Exception) {
+                Log.e("AlertService", "保存警报记录失败", e)
+            }
+        }
 
         acquireWakeLock()
 
@@ -76,6 +98,7 @@ class AlertService : Service() {
         isActive = false
         ringtone?.stop()
         ringtone = null
+        serviceScope.cancel()
         try {
             val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
             vibrator.cancel()
