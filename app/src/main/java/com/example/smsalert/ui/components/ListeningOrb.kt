@@ -11,7 +11,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -47,67 +46,7 @@ fun ListeningOrb(
         label = "breathScale",
     )
 
-    // Ripple layer 1
-    val ripple1Alpha by rememberInfiniteTransition(label = "ripple1").animateFloat(
-        initialValue = 0.18f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ripple1Alpha",
-    )
-    val ripple1Scale by rememberInfiniteTransition(label = "ripple1Scale").animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.45f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ripple1Scale",
-    )
-
-    // Ripple layer 2
-    val ripple2Alpha by rememberInfiniteTransition(label = "ripple2").animateFloat(
-        initialValue = 0f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ripple2Alpha",
-    )
-    val ripple2Scale by rememberInfiniteTransition(label = "ripple2Scale").animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.65f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ripple2Scale",
-    )
-
-    // Ripple layer 3
-    val ripple3Alpha by rememberInfiniteTransition(label = "ripple3").animateFloat(
-        initialValue = 0f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ripple3Alpha",
-    )
-    val ripple3Scale by rememberInfiniteTransition(label = "ripple3Scale").animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.9f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "ripple3Scale",
-    )
-
-    // Better ripple phases using delay
+    // Ripple phases — single progress drives all 3 layers via phase offsets
     val rippleAnimProgress by rememberInfiniteTransition(label = "rippleProgress").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -142,7 +81,9 @@ fun ListeningOrb(
         // Orb area
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.size(240.dp),
+            modifier = Modifier
+                .size(240.dp)
+                .clickable { onClick() },
         ) {
             // Ripple layer 3
             if (isListening && r3a > 0.001f) {
@@ -192,10 +133,8 @@ fun ListeningOrb(
                 modifier = Modifier
                     .size(160.dp)
                     .scale(breathScale)
-                    .alpha(orbAlpha)
-                    .clickable { onClick() },
+                    .alpha(orbAlpha),
             ) {
-                // Shadow simulation with darker edge
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
@@ -213,10 +152,10 @@ fun ListeningOrb(
                 )
             }
 
-            // Inner content
+            // Inner content (overlaid, no clickable — handled by parent Box)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.size(160.dp).clickable { onClick() },
+                modifier = Modifier.size(160.dp),
             ) {
                 Spacer(modifier = Modifier.height(52.dp))
                 Text(
