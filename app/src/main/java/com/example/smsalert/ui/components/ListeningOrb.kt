@@ -24,6 +24,7 @@ import com.example.smsalert.ui.theme.LocalAppColors
 @Composable
 fun ListeningOrb(
     isListening: Boolean,
+    elapsedTime: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -160,17 +161,18 @@ fun ListeningOrb(
             ) {
                 Spacer(modifier = Modifier.height(52.dp))
                 Text(
-                    text = if (isListening) "AI" else "OFF",
+                    text = if (isListening) "ON" else "OFF",
                     fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.85f),
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = if (isListening) "MONITORING" else "PAUSED",
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.85f),
+                    text = if (isListening) elapsedTime else "PAUSED",
+                    fontSize = if (isListening) 12.sp else 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
                 )
             }
         }

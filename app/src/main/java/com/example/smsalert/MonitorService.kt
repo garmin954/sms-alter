@@ -7,7 +7,10 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
+import android.os.SystemClock
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -15,14 +18,28 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MonitorService : Service() {
 
+    private val handler = Handler(Looper.getMainLooper())
+    private lateinit var pendingIntent: PendingIntent
+
+    private val updateRunnable = object : Runnable {
+        override fun run() {
+            updateNotification()
+            handler.postDelayed(this, 1000)
+        }
+    }
+
     companion object {
         const val CHANNEL_ID = "monitor_channel"
         const val NOTIFICATION_ID = 100
 
         @Volatile
         private var _isRunning = false
+        @Volatile
+        private var _startTime = 0L
 
         fun isRunning(): Boolean = _isRunning
+        fun getElapsedMs(): Long =
+            if (_isRunning) SystemClock.elapsedRealtime() - _startTime else 0L
 
         fun start(context: Context) {
             val intent = Intent(context, MonitorService::class.java)
@@ -47,33 +64,27 @@ class MonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         _isRunning = true
+        _startTime = SystemClock.elapsedRealtime()
         LogStore.i("MonitorService onCreate")
         createChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val pendingIntent = PendingIntent.getActivity(
+        pendingIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.monitor_notification_title))
-            .setContentText(getString(R.string.monitor_notification_text))
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setOngoing(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(pendingIntent)
-            .build()
-
         try {
-            startForeground(NOTIFICATION_ID, notification)
+            startForeground(NOTIFICATION_ID, buildNotification())
             LogStore.i("MonitorService 前台通知已显示")
         } catch (e: Exception) {
             LogStore.e("startForeground 失败: ${e.message}")
             e.printStackTrace()
         }
+
+        handler.post(updateRunnable)
 
         LogStore.i("MonitorService 启动完成，关键词: ${KeywordStore.getKeywords(this).joinToString()}")
 
@@ -81,9 +92,40 @@ class MonitorService : Service() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacks(updateRunnable)
         _isRunning = false
+        _startTime = 0L
         LogStore.i("MonitorService onDestroy")
         super.onDestroy()
+    }
+
+    private fun buildNotification(): android.app.Notification {
+        val elapsed = getElapsedMs() / 1000
+        val timeStr = if (elapsed > 0) {
+            val h = elapsed / 3600
+            val m = (elapsed % 3600) / 60
+            val s = elapsed % 60
+            String.format("%02d:%02d:%02d", h, m, s)
+        } else ""
+
+        val contentText = if (timeStr.isNotEmpty())
+            "${getString(R.string.monitor_notification_text)} $timeStr"
+        else
+            getString(R.string.monitor_notification_text)
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle(getString(R.string.monitor_notification_title))
+            .setContentText(contentText)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentIntent(pendingIntent)
+            .build()
+    }
+
+    private fun updateNotification() {
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, buildNotification())
     }
 
     private fun createChannel() {

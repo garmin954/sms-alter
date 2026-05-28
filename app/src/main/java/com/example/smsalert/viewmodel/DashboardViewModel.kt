@@ -13,10 +13,12 @@ import com.example.smsalert.SmsReceiver
 import com.example.smsalert.data.AppPreferences
 import com.example.smsalert.ui.components.checkEssentialPermissions
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,6 +31,21 @@ class DashboardViewModel @Inject constructor(
 
     val isListening: StateFlow<Boolean> = appPreferences.isListening
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonitorService.isRunning())
+
+    val elapsedTime: StateFlow<String> = flow {
+        while (true) {
+            if (MonitorService.isRunning()) {
+                val totalSec = MonitorService.getElapsedMs() / 1000
+                val h = totalSec / 3600
+                val m = (totalSec % 3600) / 60
+                val s = totalSec % 60
+                emit(String.format("%02d:%02d:%02d", h, m, s))
+            } else {
+                emit("")
+            }
+            delay(1000)
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
     private val _keywords = MutableStateFlow(KeywordStore.getKeywords(application))
     val keywords: StateFlow<List<String>> = _keywords.asStateFlow()

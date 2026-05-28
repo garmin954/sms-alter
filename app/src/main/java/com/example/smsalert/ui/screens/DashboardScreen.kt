@@ -32,6 +32,7 @@ fun DashboardScreen(
     val isListening by viewModel.isListening.collectAsState()
     val keywords by viewModel.keywords.collectAsState()
     val showPermissionDialog by viewModel.showPermissionDialog.collectAsState()
+    val elapsedTime by viewModel.elapsedTime.collectAsState()
     val colors = LocalAppColors.current
 
     Column(
@@ -49,6 +50,7 @@ fun DashboardScreen(
         ) {
             ListeningOrb(
                 isListening = isListening,
+                elapsedTime = elapsedTime,
                 onClick = viewModel::toggleListening,
             )
         }

@@ -16,11 +16,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun KeywordCard(
     keywords: List<String>,
@@ -115,39 +117,25 @@ fun KeywordCard(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Chips
+        // Chips — auto-wrap with FlowRow
         if (keywords.isNotEmpty()) {
-            Column(
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
             ) {
-                var rowItems = mutableListOf<List<String>>()
-                var currentRow = mutableListOf<String>()
                 for (kw in keywords) {
-                    currentRow.add(kw)
-                    if (currentRow.size >= 3) {
-                        rowItems.add(currentRow.toList())
-                        currentRow.clear()
-                    }
-                }
-                if (currentRow.isNotEmpty()) rowItems.add(currentRow.toList())
-
-                for (row in rowItems) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        for (kw in row) {
-                            KeywordChip(
-                                keyword = kw,
-                                onRemove = { onRemoveKeyword(kw) },
-                            )
-                        }
-                    }
+                    KeywordChip(
+                        keyword = kw,
+                        onRemove = { onRemoveKeyword(kw) },
+                    )
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun KeywordChip(
     keyword: String,
@@ -158,6 +146,7 @@ private fun KeywordChip(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .height(40.dp)
+            .widthIn(max = 200.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(colors.chipBackground)
             .padding(start = 16.dp, end = 12.dp),
@@ -167,6 +156,9 @@ private fun KeywordChip(
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = colors.darkBlue,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
         )
         Spacer(modifier = Modifier.width(6.dp))
         IconButton(
