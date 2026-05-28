@@ -277,7 +277,7 @@ UI (Compose)
 ### 第三轮: 架构升级（1-2 周）
 
 - [x] 引入 Hilt 依赖注入（Hilt 2.51.1, AGP 8.4.0, Gradle 8.9; @HiltAndroidApp, @AndroidEntryPoint, @HiltViewModel）
-- [ ] `SharedPreferences` → `DataStore`
+- [x] `SharedPreferences` → `DataStore`（`is_listening` 迁移至 DataStore + 旧 SP 自动兼容；KeywordStore/SmsReceiver 保留 SP 因 BroadcastReceiver 需同步读）
 - [ ] 引入 Room 存储历史警报记录（可搜索、可统计）
 - [ ] CI/CD pipeline（GitHub Actions）
 - [ ] Release 开启 R8 混淆 + 完善 keep 规则

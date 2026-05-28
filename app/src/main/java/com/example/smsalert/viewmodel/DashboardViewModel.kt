@@ -4,29 +4,31 @@ import android.app.Application
 import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
 import com.example.smsalert.AlertService
 import com.example.smsalert.KeywordStore
 import com.example.smsalert.MonitorService
 import com.example.smsalert.R
 import com.example.smsalert.SmsReceiver
+import com.example.smsalert.data.AppPreferences
 import com.example.smsalert.ui.components.checkEssentialPermissions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     application: Application,
+    private val appPreferences: AppPreferences,
 ) : AndroidViewModel(application) {
 
-    private val prefs = application.getSharedPreferences("sms_alert_prefs", Application.MODE_PRIVATE)
-
-    private val _isListening = MutableStateFlow(
-        prefs.getBoolean("is_listening", MonitorService.isRunning())
-    )
-    val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
+    val isListening: StateFlow<Boolean> = appPreferences.isListening
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonitorService.isRunning())
 
     private val _keywords = MutableStateFlow(KeywordStore.getKeywords(application))
     val keywords: StateFlow<List<String>> = _keywords.asStateFlow()
@@ -35,7 +37,7 @@ class DashboardViewModel @Inject constructor(
     val showPermissionDialog: StateFlow<Boolean> = _showPermissionDialog.asStateFlow()
 
     fun toggleListening() {
-        val nextState = !_isListening.value
+        val nextState = !isListening.value
         val context = getApplication<Application>()
 
         if (nextState && !checkEssentialPermissions(context)) {
@@ -43,8 +45,9 @@ class DashboardViewModel @Inject constructor(
             return
         }
 
-        _isListening.value = nextState
-        prefs.edit().putBoolean("is_listening", nextState).apply()
+        viewModelScope.launch {
+            appPreferences.setIsListening(nextState)
+        }
 
         if (nextState) {
             MonitorService.start(context)

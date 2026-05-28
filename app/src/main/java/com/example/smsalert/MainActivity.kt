@@ -31,11 +31,17 @@ import com.example.smsalert.ui.components.BottomNavBar
 import com.example.smsalert.ui.screens.DashboardScreen
 import com.example.smsalert.ui.screens.HistoryScreen
 import com.example.smsalert.ui.screens.SettingsScreen
+import com.example.smsalert.data.AppPreferences
 import com.example.smsalert.ui.theme.Background
 import com.example.smsalert.ui.theme.SmsAlertTheme
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject lateinit var appPreferences: AppPreferences
 
     private var permissionRefreshKey by mutableIntStateOf(0)
 
@@ -56,8 +62,7 @@ class MainActivity : ComponentActivity() {
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val prefs = getSharedPreferences("sms_alert_prefs", MODE_PRIVATE)
-        val shouldListen = prefs.getBoolean("is_listening", true)
+        val shouldListen = runBlocking { appPreferences.isListening.first() }
         SmsReceiver.setEnabled(this, shouldListen)
         if (shouldListen) {
             MonitorService.start(this)
