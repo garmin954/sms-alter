@@ -29,10 +29,12 @@ fun SettingsScreen(
         viewModel.refreshPermissions()
     }
 
+    val colors = LocalAppColors.current
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Background)
+            .background(colors.background)
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
     ) {
@@ -40,7 +42,7 @@ fun SettingsScreen(
             text = stringResource(R.string.settings_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = DarkBlue,
+            color = colors.darkBlue,
         )
 
         Spacer(modifier = Modifier.height(24.dp))

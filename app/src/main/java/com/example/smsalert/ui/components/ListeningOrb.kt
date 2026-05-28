@@ -19,10 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smsalert.R
-import com.example.smsalert.ui.theme.DarkBlue
-import com.example.smsalert.ui.theme.PausedGray
-import com.example.smsalert.ui.theme.PrimaryBlue
-import com.example.smsalert.ui.theme.TextGray
+import com.example.smsalert.ui.theme.LocalAppColors
 
 @Composable
 fun ListeningOrb(
@@ -30,9 +27,11 @@ fun ListeningOrb(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalAppColors.current
+
     // Color transition
     val orbColor by animateColorAsState(
-        targetValue = if (isListening) PrimaryBlue else PausedGray,
+        targetValue = if (isListening) colors.primaryBlue else colors.pausedGray,
         animationSpec = tween(300),
         label = "orbColor",
     )
@@ -96,7 +95,7 @@ fun ListeningOrb(
                         .alpha(r3a),
                 ) {
                     drawCircle(
-                        color = PrimaryBlue,
+                        color = colors.primaryBlue,
                         radius = size.minDimension / 2f,
                     )
                 }
@@ -110,7 +109,7 @@ fun ListeningOrb(
                         .alpha(r2a),
                 ) {
                     drawCircle(
-                        color = PrimaryBlue,
+                        color = colors.primaryBlue,
                         radius = size.minDimension / 2f,
                     )
                 }
@@ -124,7 +123,7 @@ fun ListeningOrb(
                         .alpha(r1a),
                 ) {
                     drawCircle(
-                        color = PrimaryBlue,
+                        color = colors.primaryBlue,
                         radius = size.minDimension / 2f,
                     )
                 }
@@ -183,7 +182,7 @@ fun ListeningOrb(
             text = if (isListening) stringResource(R.string.tap_to_toggle_listening) else stringResource(R.string.monitoring_paused),
             fontSize = 12.sp,
             fontWeight = FontWeight.Normal,
-            color = TextGray,
+            color = colors.textGray,
         )
     }
 }

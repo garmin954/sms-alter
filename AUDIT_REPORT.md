@@ -279,11 +279,11 @@ UI (Compose)
 - [x] 引入 Hilt 依赖注入（Hilt 2.51.1, AGP 8.4.0, Gradle 8.9; @HiltAndroidApp, @AndroidEntryPoint, @HiltViewModel）
 - [x] `SharedPreferences` → `DataStore`（`is_listening` 迁移至 DataStore + 旧 SP 自动兼容；KeywordStore/SmsReceiver 保留 SP 因 BroadcastReceiver 需同步读）
 - [x] 引入 Room 存储历史警报记录（可搜索、可统计）（AlertRecord entity + AlertDao + Hilt module；AlertService 触发时自动写入；HistoryScreen 展示警报记录 + 今日统计）
-- [x] CI/CD pipeline（GitHub Actions）（ci.yml: lint → unit test → build APK → upload artifacts；push/PR 触发）
-- [ ] Release 开启 R8 混淆 + 完善 keep 规则
-- [ ] Google Play 合规审核准备（隐私政策、特殊权限声明、Data Safety 表单）
-- [ ] 适配横屏 / 平板（WindowSizeClass）
-- [ ] 适配暗色主题
+- [x] CI/CD pipeline（GitHub Actions）（ci.yml: lint → unit test → debug + release APK → upload artifacts；push/PR 触发）
+- [x] Release 开启 R8 混淆 + 完善 keep 规则（minifyEnabled + shrinkResources；Room/Hilt/Compose/Navigation/DataStore/Coroutines keep rules）
+- [x] Google Play 合规审核准备（Manifest: allowBackup=false, usesCleartextTraffic=false, queries 厂商白名单, launchMode 优化; PRIVACY_POLICY.md）
+- [x] 适配横屏 / 平板（WindowSizeClass — 宽屏设备内容限宽 600dp 居中）
+- [x] 适配暗色主题（darkColorScheme + AppColors 双色板 + LocalAppColors CompositionLocal；10 个组件适配）
 
 ---
 

@@ -32,11 +32,12 @@ fun DashboardScreen(
     val isListening by viewModel.isListening.collectAsState()
     val keywords by viewModel.keywords.collectAsState()
     val showPermissionDialog by viewModel.showPermissionDialog.collectAsState()
+    val colors = LocalAppColors.current
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Background)
+            .background(colors.background)
             .verticalScroll(rememberScrollState())
             .padding(top = 24.dp),
     ) {
@@ -70,16 +71,16 @@ fun DashboardScreen(
                 .padding(horizontal = 24.dp)
                 .height(48.dp),
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, DangerRed),
+            border = BorderStroke(1.dp, colors.dangerRed),
             colors = ButtonDefaults.outlinedButtonColors(
                 containerColor = Color.White,
-                contentColor = DangerRed,
+                contentColor = colors.dangerRed,
             ),
         ) {
             Icon(
                 imageVector = Icons.Default.Campaign,
                 contentDescription = null,
-                tint = DangerRed,
+                tint = colors.dangerRed,
                 modifier = Modifier.size(20.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -87,7 +88,7 @@ fun DashboardScreen(
                 text = stringResource(R.string.test_alarm_button),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = DangerRed,
+                color = colors.dangerRed,
             )
         }
 
@@ -98,14 +99,14 @@ fun DashboardScreen(
         AlertDialog(
             onDismissRequest = viewModel::dismissPermissionDialog,
             title = {
-                Text(stringResource(R.string.permission_not_granted_title), fontWeight = FontWeight.Bold, color = DarkBlue)
+                Text(stringResource(R.string.permission_not_granted_title), fontWeight = FontWeight.Bold, color = colors.darkBlue)
             },
             text = {
-                Text(stringResource(R.string.permission_not_granted_message), color = TextGray)
+                Text(stringResource(R.string.permission_not_granted_message), color = colors.textGray)
             },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissPermissionDialog) {
-                    Text(stringResource(R.string.dismiss_button), color = PrimaryBlue)
+                    Text(stringResource(R.string.dismiss_button), color = colors.primaryBlue)
                 }
             },
         )

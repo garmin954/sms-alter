@@ -42,11 +42,12 @@ fun BottomNavBar(
     onItemClick: (BottomNavItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalAppColors.current
     Row(
         modifier = modifier
             .fillMaxWidth()
             .height(88.dp)
-            .background(BottomBarBackground)
+            .background(colors.bottomBarBackground)
             .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
@@ -70,6 +71,7 @@ private fun BottomNavItemView(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalAppColors.current
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -78,7 +80,7 @@ private fun BottomNavItemView(
                 if (isSelected) {
                     Modifier
                         .clip(RoundedCornerShape(999.dp))
-                        .background(BottomNavActiveBg)
+                        .background(colors.bottomNavActiveBg)
                 } else {
                     Modifier
                 }
@@ -93,7 +95,7 @@ private fun BottomNavItemView(
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.label,
-                tint = if (isSelected) Color.White else DarkBlue.copy(alpha = 0.6f),
+                tint = if (isSelected) Color.White else colors.darkBlue.copy(alpha = 0.6f),
                 modifier = Modifier.size(24.dp),
             )
             if (isSelected) {

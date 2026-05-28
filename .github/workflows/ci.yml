@@ -25,6 +25,10 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
+      # 👇 关键：给 gradlew 执行权限，解决 126 错误
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
       - name: Run Lint
         run: ./gradlew :app:lintDebug
 
@@ -34,11 +38,16 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew :app:assembleDebug
 
-      - name: Upload APK
+      - name: Build Release APK (R8 enabled)
+        run: ./gradlew :app:assembleRelease
+
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/release/app-release-unsigned.apk
 
       - name: Upload Test Results
         if: always()

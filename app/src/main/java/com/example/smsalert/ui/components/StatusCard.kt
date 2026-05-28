@@ -144,18 +144,19 @@ fun StatusCard(
     onOpenSetting: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val colors = LocalAppColors.current
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(CardBackground)
+            .background(colors.cardBackground)
             .padding(24.dp),
     ) {
         Text(
             text = stringResource(R.string.permission_status_title),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = DarkBlue,
+            color = colors.darkBlue,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -179,7 +180,7 @@ fun StatusCard(
                 .fillMaxWidth()
                 .height(48.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+            colors = ButtonDefaults.buttonColors(containerColor = colors.primaryBlue),
         ) {
             Text(
                 text = stringResource(R.string.request_all_permissions),
@@ -198,6 +199,7 @@ private fun StatusRow(
     granted: Boolean,
     onClick: (() -> Unit)? = null,
 ) {
+    val colors = LocalAppColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
@@ -212,7 +214,7 @@ private fun StatusRow(
         Icon(
             imageVector = Icons.Default.CheckCircle,
             contentDescription = null,
-            tint = if (granted) PrimaryBlue else TextGray,
+            tint = if (granted) colors.primaryBlue else colors.textGray,
             modifier = Modifier.size(20.dp),
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -220,21 +222,21 @@ private fun StatusRow(
             text = title,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = DarkBlue,
+            color = colors.darkBlue,
             modifier = Modifier.weight(1f),
         )
         Text(
             text = status,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = if (granted) PrimaryBlue else TextGray,
+            color = if (granted) colors.primaryBlue else colors.textGray,
         )
         if (onClick != null) {
             Spacer(modifier = Modifier.width(2.dp))
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = stringResource(R.string.open_settings_description),
-                tint = TextGray.copy(alpha = 0.5f),
+                tint = colors.textGray.copy(alpha = 0.5f),
                 modifier = Modifier.size(18.dp),
             )
         }

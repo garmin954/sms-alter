@@ -17,10 +17,14 @@ import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -32,7 +36,7 @@ import com.example.smsalert.ui.screens.DashboardScreen
 import com.example.smsalert.ui.screens.HistoryScreen
 import com.example.smsalert.ui.screens.SettingsScreen
 import com.example.smsalert.data.AppPreferences
-import com.example.smsalert.ui.theme.Background
+import com.example.smsalert.ui.theme.LocalAppColors
 import com.example.smsalert.ui.theme.SmsAlertTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -79,6 +83,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     @Composable
     private fun MainNavGraph(
         onRequestPermissions: () -> Unit,
@@ -88,16 +93,22 @@ class MainActivity : ComponentActivity() {
         val navController = rememberNavController()
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route ?: "home"
+        val colors = LocalAppColors.current
+        val activity = androidx.compose.ui.platform.LocalContext.current as android.app.Activity
+        val windowSizeClass = calculateWindowSizeClass(activity)
+        val contentMaxWidth = if (windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded) 600.dp else null
 
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Background),
+                    .background(colors.background),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
+                        .then(contentMaxWidth?.let { Modifier.widthIn(max = it) } ?: Modifier)
                         .fillMaxWidth()
                         .statusBarsPadding(),
                 ) {

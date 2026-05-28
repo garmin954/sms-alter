@@ -29,19 +29,20 @@ fun KeywordCard(
     modifier: Modifier = Modifier,
 ) {
     var inputText by remember { mutableStateOf("") }
+    val colors = LocalAppColors.current
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(CardBackground)
+            .background(colors.cardBackground)
             .padding(24.dp),
     ) {
         Text(
             text = stringResource(R.string.keyword_settings_title),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = DarkBlue,
+            color = colors.darkBlue,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -58,7 +59,7 @@ fun KeywordCard(
                     Text(
                         stringResource(R.string.keyword_input_hint),
                         fontSize = 14.sp,
-                        color = TextGray,
+                        color = colors.textGray,
                     )
                 },
                 modifier = Modifier
@@ -66,8 +67,8 @@ fun KeywordCard(
                     .height(48.dp),
                 shape = RoundedCornerShape(6.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = InputBackground,
-                    unfocusedContainerColor = InputBackground,
+                    focusedContainerColor = colors.inputBackground,
+                    unfocusedContainerColor = colors.inputBackground,
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent,
                 ),
@@ -83,7 +84,7 @@ fun KeywordCard(
                 ),
                 textStyle = LocalTextStyle.current.copy(
                     fontSize = 14.sp,
-                    color = DarkBlue,
+                    color = colors.darkBlue,
                 ),
                 singleLine = true,
             )
@@ -99,7 +100,7 @@ fun KeywordCard(
                 modifier = Modifier.height(48.dp),
                 shape = RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryBlue,
+                    containerColor = colors.primaryBlue,
                     contentColor = Color.White,
                 ),
             ) {
@@ -152,19 +153,20 @@ private fun KeywordChip(
     keyword: String,
     onRemove: () -> Unit,
 ) {
+    val colors = LocalAppColors.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .height(40.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(ChipBackground)
+            .background(colors.chipBackground)
             .padding(start = 16.dp, end = 12.dp),
     ) {
         Text(
             text = keyword,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = DarkBlue,
+            color = colors.darkBlue,
         )
         Spacer(modifier = Modifier.width(6.dp))
         IconButton(
@@ -174,7 +176,7 @@ private fun KeywordChip(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "删除",
-                tint = DarkBlue,
+                tint = colors.darkBlue,
                 modifier = Modifier.size(14.dp),
             )
         }

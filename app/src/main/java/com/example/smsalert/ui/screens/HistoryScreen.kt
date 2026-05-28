@@ -37,35 +37,36 @@ fun HistoryScreen(
     val alertCountToday by viewModel.alertCountToday.collectAsState()
 
     val timeFormat = remember { SimpleDateFormat("MM-dd HH:mm", Locale.getDefault()) }
+    val colors = LocalAppColors.current
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Background),
+            .background(colors.background),
     ) {
         // Header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Background)
+                .background(colors.background)
                 .padding(horizontal = 24.dp, vertical = 12.dp),
         ) {
             Text(
                 text = stringResource(R.string.history_title),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = DarkBlue,
+                color = colors.darkBlue,
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = stringResource(R.string.log_count_format, logCount),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = TextGray,
+                color = colors.textGray,
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
-                    .background(DarkBlue.copy(alpha = 0.08f))
+                    .background(colors.darkBlue.copy(alpha = 0.08f))
                     .padding(horizontal = 10.dp, vertical = 4.dp),
             )
             Spacer(modifier = Modifier.width(12.dp))
@@ -73,7 +74,7 @@ fun HistoryScreen(
                 text = stringResource(R.string.clear_button),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = DangerRed,
+                color = colors.dangerRed,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
                     .clickable { viewModel.clearLogs() }
@@ -91,7 +92,7 @@ fun HistoryScreen(
             Icon(
                 imageVector = Icons.Default.Campaign,
                 contentDescription = null,
-                tint = AlertRed,
+                tint = colors.alertRed,
                 modifier = Modifier.size(16.dp),
             )
             Spacer(modifier = Modifier.width(6.dp))
@@ -99,7 +100,7 @@ fun HistoryScreen(
                 text = "今日警报: $alertCountToday 条",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
-                color = DarkBlue,
+                color = colors.darkBlue,
                 modifier = Modifier.weight(1f),
             )
             if (alertRecords.isNotEmpty()) {
@@ -107,7 +108,7 @@ fun HistoryScreen(
                     text = stringResource(R.string.clear_button),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = DangerRed,
+                    color = colors.dangerRed,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .clickable { viewModel.clearAlerts() }
@@ -135,7 +136,7 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.Campaign,
                             contentDescription = null,
-                            tint = if (record.source == "test") TextGray else AlertRed,
+                            tint = if (record.source == "test") colors.textGray else colors.alertRed,
                             modifier = Modifier.size(20.dp),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -144,14 +145,14 @@ fun HistoryScreen(
                                 text = record.message,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = DarkBlue,
+                                color = colors.darkBlue,
                                 maxLines = 3,
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = timeFormat.format(Date(record.timestamp)),
                                 fontSize = 11.sp,
-                                color = TextGray,
+                                color = colors.textGray,
                             )
                         }
                     }
@@ -160,7 +161,7 @@ fun HistoryScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(1.dp)
-                                .background(BorderGray),
+                                .background(colors.borderGray),
                         )
                     }
                 }
@@ -178,7 +179,7 @@ fun HistoryScreen(
                     Text(
                         text = stringResource(R.string.no_logs),
                         fontSize = 14.sp,
-                        color = TextGray,
+                        color = colors.textGray,
                     )
                 }
             } else {
@@ -200,7 +201,7 @@ fun HistoryScreen(
                             Icon(
                                 imageVector = if (isAlert) Icons.Default.Campaign else Icons.Default.Info,
                                 contentDescription = null,
-                                tint = if (isAlert) AlertRed else TextGray,
+                                tint = if (isAlert) colors.alertRed else colors.textGray,
                                 modifier = Modifier.size(20.dp),
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -208,7 +209,7 @@ fun HistoryScreen(
                                 text = entry,
                                 fontSize = 13.sp,
                                 fontWeight = if (isAlert) FontWeight.Medium else FontWeight.Normal,
-                                color = if (isAlert) DarkBlue else TextGray,
+                                color = if (isAlert) colors.darkBlue else colors.textGray,
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -217,7 +218,7 @@ fun HistoryScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(1.dp)
-                                    .background(BorderGray),
+                                    .background(colors.borderGray),
                             )
                         }
                     }
