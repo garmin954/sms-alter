@@ -119,15 +119,7 @@
 
 ---
 
-### M5. `VibrationEffect.createWaveform` 使用 `repeat=0` 不会循环
-
-**文件**: [app/src/main/java/com/example/smsalert/AlertService.kt:92](app/src/main/java/com/example/smsalert/AlertService.kt#L92)
-
-`vibrator.vibrate(VibrationEffect.createWaveform(pattern, 0))` 第二个参数 `0` 表示不重复。注释说"反复循环直到用户关闭"但实际代码不会循环振动，只会播一次 pattern（约 3 秒）。
-
-**修复**: 将 `0` 改为 `VibrationEffect.DEFAULT_AMPLITUDE` 或明确实现循环逻辑。
-
----
+<!-- M5 removed: VibrationEffect.createWaveform with repeat=0 DOES loop (confirmed against API docs). No issue. -->
 
 ### M6. Ringtone 没有 fallback 和错误处理
 
@@ -262,15 +254,15 @@ UI (Compose)
 
 ### 第一轮: 低风险修复（1-2 天）
 
-- [ ] 删除 `activity_main.xml`（旧的 XML 版首页），确认只用 Compose
-- [ ] `AlarmActivity` 改用 Compose + 统一颜色系统
-- [ ] `LogStore` 的回调机制改为 `MutableSharedFlow`
-- [ ] 修复 `ListeningOrb` 的无效动画 + 多重 clickable 问题
-- [ ] 修复 `VibrationEffect` 循环振动参数
-- [ ] WakeLock 加 60 秒超时
-- [ ] 修复 `HistoryScreen` 的观察者泄漏
-- [ ] `KeywordStore` 改用 JSON 序列化
-- [ ] 统一 `namespace` 和 `applicationId`
+- [x] 删除 `activity_main.xml`（旧的 XML 版首页），确认只用 Compose
+- [x] `AlarmActivity` 改用 Compose + 统一颜色系统
+- [x] `LogStore` 的回调机制改为 `MutableSharedFlow`
+- [x] 修复 `ListeningOrb` 的无效动画 + 多重 clickable 问题
+- [x] ~~修复 `VibrationEffect` 循环振动参数~~（确认 `repeat=0` 即循环，代码正确，不做改动）
+- [x] WakeLock 加 60 秒超时
+- [x] 修复 `HistoryScreen` 的观察者泄漏（已随 SharedFlow 重构解决）
+- [x] `KeywordStore` 改用 JSON 序列化（含 **##** 旧格式自动迁移）
+- [x] 统一 `namespace` 和 `applicationId`
 
 ### 第二轮: 中等重构（3-5 天）
 

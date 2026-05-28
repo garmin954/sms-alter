@@ -114,9 +114,9 @@ class AlertService : Service() {
             "smsalert:alert"
         ).apply {
             setReferenceCounted(false)
-            acquire()
+            acquire(60_000)
         }
-        LogStore.d("WakeLock 已获取（无超时）")
+        LogStore.d("WakeLock 已获取（60秒超时）")
     }
 
     private fun releaseWakeLock() {
