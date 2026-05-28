@@ -8,6 +8,8 @@ import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class LogActivity : AppCompatActivity() {
 
@@ -36,8 +38,10 @@ class LogActivity : AppCompatActivity() {
 
         updateUi()
 
-        LogStore.onNewEntry = {
-            handler.post { updateUi() }
+        lifecycleScope.launch {
+            LogStore.events.collect {
+                handler.post { updateUi() }
+            }
         }
 
         btnClear.setOnClickListener {

@@ -4,6 +4,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 object LogStore {
 
@@ -14,8 +17,8 @@ object LogStore {
 
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    @Volatile
-    var onNewEntry: (() -> Unit)? = null
+    private val _events = MutableSharedFlow<Unit>(extraBufferCapacity = 64)
+    val events: SharedFlow<Unit> = _events.asSharedFlow()
 
     @Synchronized
     fun add(tag: String, msg: String) {
@@ -25,7 +28,7 @@ object LogStore {
         if (_entries.size > MAX_ENTRIES) {
             _entries.removeAt(_entries.size - 1)
         }
-        onNewEntry?.invoke()
+        _events.tryEmit(Unit)
     }
 
     fun clear() {

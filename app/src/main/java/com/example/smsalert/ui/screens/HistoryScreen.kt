@@ -28,13 +28,11 @@ fun HistoryScreen(
     var logs by remember { mutableStateOf(LogStore.entries.toList()) }
     var logCount by remember { mutableStateOf(LogStore.entries.size) }
 
-    DisposableEffect(Unit) {
-        val observer: () -> Unit = {
+    LaunchedEffect(Unit) {
+        LogStore.events.collect {
             logs = LogStore.entries.toList()
             logCount = LogStore.entries.size
         }
-        LogStore.onNewEntry = observer
-        onDispose { }
     }
 
     Column(
