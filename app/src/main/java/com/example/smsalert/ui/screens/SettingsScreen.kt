@@ -7,22 +7,27 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smsalert.R
 import com.example.smsalert.ui.components.StatusCard
-import com.example.smsalert.ui.components.checkAllPermissions
 import com.example.smsalert.ui.theme.*
+import com.example.smsalert.viewmodel.SettingsViewModel
 
 @Composable
 fun SettingsScreen(
     onRequestPermissions: () -> Unit,
     onOpenSetting: (String) -> Unit = {},
-    permissionsRefreshKey: Int,
+    permissionsRefreshKey: Int = 0,
     modifier: Modifier = Modifier,
+    viewModel: SettingsViewModel = viewModel(),
 ) {
-    val context = LocalContext.current
+    LaunchedEffect(permissionsRefreshKey) {
+        viewModel.refreshPermissions()
+    }
 
     Column(
         modifier = modifier
@@ -32,7 +37,7 @@ fun SettingsScreen(
             .padding(24.dp),
     ) {
         Text(
-            text = "设置",
+            text = stringResource(R.string.settings_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = DarkBlue,
@@ -40,7 +45,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val permissions = remember(permissionsRefreshKey) { checkAllPermissions(context) }
+        val permissions by viewModel.permissions.collectAsState()
         StatusCard(
             permissions = permissions,
             onRequestAll = { onRequestPermissions() },

@@ -76,5 +76,12 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-compose:2.8.2'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2'
 
+    // Navigation
+    implementation 'androidx.navigation:navigation-compose:2.7.7'
+
     debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    // Tests
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20231013'
 }

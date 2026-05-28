@@ -15,8 +15,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smsalert.R
 import com.example.smsalert.ui.theme.DarkBlue
 import com.example.smsalert.ui.theme.PausedGray
 import com.example.smsalert.ui.theme.PrimaryBlue
@@ -178,7 +180,7 @@ fun ListeningOrb(
 
         // Status text
         Text(
-            text = if (isListening) "点击图标切换监听状态" else "监听已暂停",
+            text = if (isListening) stringResource(R.string.tap_to_toggle_listening) else stringResource(R.string.monitoring_paused),
             fontSize = 12.sp,
             fontWeight = FontWeight.Normal,
             color = TextGray,

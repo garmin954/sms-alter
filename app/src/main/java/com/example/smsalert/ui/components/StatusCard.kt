@@ -21,10 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
 
 data class PermissionItem(
@@ -60,46 +62,50 @@ fun checkAllPermissions(context: Context): List<PermissionItem> {
 
     // 厂商权限无法通过标准 API 准确检查，始终需用户手动确认
 
+    val grantedStr = context.getString(R.string.perm_granted)
+    val notGrantedStr = context.getString(R.string.perm_not_granted)
+    val manualStr = context.getString(R.string.perm_manual_setup)
+
     return listOf(
         PermissionItem(
-            title = "短信权限",
-            status = if (smsGranted) "已授权" else "未授权",
+            title = context.getString(R.string.perm_sms),
+            status = if (smsGranted) grantedStr else notGrantedStr,
             granted = smsGranted,
             settingType = "sms",
         ),
         PermissionItem(
-            title = "通知权限",
-            status = if (hasNotification) "已授权" else "未授权",
+            title = context.getString(R.string.perm_notification),
+            status = if (hasNotification) grantedStr else notGrantedStr,
             granted = hasNotification,
             settingType = "notification",
         ),
         PermissionItem(
-            title = "电池优化",
-            status = if (isIgnoringBattery) "已授权" else "未授权",
+            title = context.getString(R.string.perm_battery),
+            status = if (isIgnoringBattery) grantedStr else notGrantedStr,
             granted = isIgnoringBattery,
             settingType = "battery",
         ),
         PermissionItem(
-            title = "悬浮窗权限",
-            status = if (hasOverlay) "已授权" else "未授权",
+            title = context.getString(R.string.perm_overlay),
+            status = if (hasOverlay) grantedStr else notGrantedStr,
             granted = hasOverlay,
             settingType = "overlay",
         ),
         PermissionItem(
-            title = "自启动",
-            status = "需手动设置",
+            title = context.getString(R.string.perm_autostart),
+            status = manualStr,
             granted = false,
             settingType = "autostart",
         ),
         PermissionItem(
-            title = "锁屏显示",
-            status = "需手动设置",
+            title = context.getString(R.string.perm_lockscreen),
+            status = manualStr,
             granted = false,
             settingType = "lockscreen",
         ),
         PermissionItem(
-            title = "后台弹出界面",
-            status = "需手动设置",
+            title = context.getString(R.string.perm_bg_popup),
+            status = manualStr,
             granted = false,
             settingType = "bgpopup",
         ),
@@ -146,7 +152,7 @@ fun StatusCard(
             .padding(24.dp),
     ) {
         Text(
-            text = "权限与保活状态检查",
+            text = stringResource(R.string.permission_status_title),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = DarkBlue,
@@ -176,7 +182,7 @@ fun StatusCard(
             colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
         ) {
             Text(
-                text = "一键申请所有权限",
+                text = stringResource(R.string.request_all_permissions),
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = androidx.compose.ui.graphics.Color.White,
@@ -227,7 +233,7 @@ private fun StatusRow(
             Spacer(modifier = Modifier.width(2.dp))
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = "打开设置",
+                contentDescription = stringResource(R.string.open_settings_description),
                 tint = TextGray.copy(alpha = 0.5f),
                 modifier = Modifier.size(18.dp),
             )

@@ -40,7 +40,7 @@ class AlertService : Service() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("紧急短信")
+            .setContentTitle(getString(R.string.alert_notification_title))
             .setContentText(msg)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setPriority(NotificationCompat.PRIORITY_MAX)

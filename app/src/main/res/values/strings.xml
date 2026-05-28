@@ -1,4 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SMS Alert</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">首页</string>
+    <string name="nav_logs">日志</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Dashboard -->
+    <string name="tap_to_toggle_listening">点击图标切换监听状态</string>
+    <string name="monitoring_paused">监听已暂停</string>
+    <string name="test_alarm_button">触发报警模拟测试</string>
+    <string name="test_alarm_message">模拟报警测试：检测到紧急关键词</string>
+    <string name="permission_not_granted_title">权限未授予</string>
+    <string name="permission_not_granted_message">请前往「设置」页面检查并开启所需权限</string>
+    <string name="dismiss_button">知道了</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="permission_status_title">权限与保活状态检查</string>
+    <string name="request_all_permissions">一键申请所有权限</string>
+    <string name="perm_sms">短信权限</string>
+    <string name="perm_notification">通知权限</string>
+    <string name="perm_battery">电池优化</string>
+    <string name="perm_overlay">悬浮窗权限</string>
+    <string name="perm_autostart">自启动</string>
+    <string name="perm_lockscreen">锁屏显示</string>
+    <string name="perm_bg_popup">后台弹出界面</string>
+    <string name="perm_granted">已授权</string>
+    <string name="perm_not_granted">未授权</string>
+    <string name="perm_manual_setup">需手动设置</string>
+
+    <!-- Keyword card -->
+    <string name="keyword_settings_title">报警关键词设置</string>
+    <string name="keyword_input_hint">输入关键词…</string>
+    <string name="add_button">添加</string>
+
+    <!-- History -->
+    <string name="history_title">日志</string>
+    <string name="log_count_format">%d 条</string>
+    <string name="clear_button">清空</string>
+    <string name="no_logs">暂无日志</string>
+
+    <!-- Alarm screen -->
+    <string name="alarm_title">紧急短信警报</string>
+    <string name="alarm_sms_content_label">短信内容</string>
+    <string name="alarm_confirm_button">我已确认</string>
+    <string name="alarm_dismiss_hint">点击确认后将关闭警报</string>
+    <string name="unknown_sms_content">未知短信内容</string>
+
+    <!-- Monitor service -->
+    <string name="monitor_notification_title">短信报警</string>
+    <string name="monitor_notification_text">正在监控短信…</string>
+    <string name="monitor_channel_name">监控服务</string>
+    <string name="monitor_channel_description">短信监控服务运行中</string>
+    <string name="monitor_start_failed">启动监控服务失败</string>
+
+    <!-- Alert service -->
+    <string name="alert_notification_title">紧急短信</string>
+
+    <!-- Permission hints (toasts) -->
+    <string name="overlay_permission_hint">请开启「显示在其他应用上层」权限以保障锁屏报警弹窗正常工作</string>
+    <string name="autostart_permission_hint">请在列表中开启本应用的「自启动」权限</string>
+    <string name="autostart_manual_hint">请手动在设置中开启「自启动」权限</string>
+    <string name="lockscreen_permission_hint">请确保「在锁定屏幕上」设置为显示通知内容</string>
+    <string name="lockscreen_notification_hint">请在锁定屏幕上显示本应用通知</string>
+    <string name="manual_settings_hint">请手动前往系统设置配置权限</string>
+    <string name="open_settings_description">打开设置</string>
 </resources>

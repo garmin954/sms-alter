@@ -26,7 +26,7 @@ class AlarmActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_FULLSCREEN
         )
 
-        val msg = intent.getStringExtra("msg") ?: "未知短信内容"
+        val msg = intent.getStringExtra("msg") ?: getString(R.string.unknown_sms_content)
 
         setContent {
             AlarmScreen(

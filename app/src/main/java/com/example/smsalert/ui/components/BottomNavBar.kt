@@ -16,9 +16,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
 
 data class BottomNavItem(
@@ -27,10 +29,11 @@ data class BottomNavItem(
     val route: String,
 )
 
-val bottomNavItems = listOf(
-    BottomNavItem("首页", Icons.Default.Home, "home"),
-    BottomNavItem("日志", Icons.Default.Description, "logs"),
-    BottomNavItem("设置", Icons.Default.Settings, "settings"),
+@Composable
+fun bottomNavItems() = listOf(
+    BottomNavItem(stringResource(R.string.nav_home), Icons.Default.Home, "home"),
+    BottomNavItem(stringResource(R.string.nav_logs), Icons.Default.Description, "logs"),
+    BottomNavItem(stringResource(R.string.nav_settings), Icons.Default.Settings, "settings"),
 )
 
 @Composable
@@ -48,7 +51,7 @@ fun BottomNavBar(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        bottomNavItems.forEach { item ->
+        bottomNavItems().forEach { item ->
             val isSelected = item.route == selectedRoute
             BottomNavItemView(
                 item = item,

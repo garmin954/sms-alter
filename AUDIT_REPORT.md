@@ -266,13 +266,13 @@ UI (Compose)
 
 ### 第二轮: 中等重构（3-5 天）
 
-- [ ] 引入 ViewModel 层: `DashboardViewModel`, `SettingsViewModel`, `HistoryViewModel`
-- [ ] 短信检测完全依赖 `SmsReceiver`，去掉 ContentObserver + 轮询
-- [ ] 去重逻辑持久化到 SharedPreferences
-- [ ] 统一 UI 颜色体系，删除 `colors.xml` 中 Compose 不用的颜色
-- [ ] 提取所有中文字符串到 `strings.xml`
-- [ ] 补充单元测试（关键词匹配、去重、权限检查）
-- [ ] Compose Navigation 替代手动 `when(selectedRoute)` 路由
+- [x] 引入 ViewModel 层: `DashboardViewModel`, `SettingsViewModel`, `HistoryViewModel`（AndroidViewModel + StateFlow）
+- [x] 短信检测完全依赖 `SmsReceiver`，去掉 ContentObserver + 轮询
+- [x] 去重逻辑持久化到 SharedPreferences
+- [x] 统一 UI 颜色体系，删除 `colors.xml`（仅保留 themes.xml 内联引用）
+- [x] 提取所有中文字符串到 `strings.xml`（60+ 条，覆盖所有用户可见字符串）
+- [x] 补充单元测试（关键词匹配、去重、权限检查）（13 tests, 0 failures: KeywordStoreTest 4, LogStoreTest 5, SmsReceiverDedupTest 4）
+- [x] Compose Navigation 替代手动 `when(selectedRoute)` 路由
 
 ### 第三轮: 架构升级（1-2 周）
 

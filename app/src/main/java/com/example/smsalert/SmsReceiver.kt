@@ -11,8 +11,10 @@ import android.provider.Telephony
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
-        private var lastBody: String = ""
-        private var lastTime: Long = 0
+        private const val PREFS_NAME = "sms_alert_prefs"
+        private const val KEY_LAST_BODY = "last_sms_body"
+        private const val KEY_LAST_TIME = "last_sms_time"
+        private const val KEY_LAST_ID = "last_sms_id"
 
         fun setEnabled(context: Context, enabled: Boolean) {
             val pm = context.packageManager
@@ -42,13 +44,18 @@ class SmsReceiver : BroadcastReceiver() {
 
                 LogStore.i("匹配到关键词！触发报警...")
 
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val lastBody = prefs.getString(KEY_LAST_BODY, "") ?: ""
+                val lastTime = prefs.getLong(KEY_LAST_TIME, 0)
                 val now = System.currentTimeMillis()
-                if (body == lastBody && (now - lastTime) < 3000) {
+                if (SmsReceiverDedup.isDuplicate(body, now, lastBody, lastTime)) {
                     LogStore.w("3秒内重复短信，跳过")
                     return
                 }
-                lastBody = body
-                lastTime = now
+                prefs.edit()
+                    .putString(KEY_LAST_BODY, body)
+                    .putLong(KEY_LAST_TIME, now)
+                    .apply()
 
                 val serviceIntent = Intent(context, AlertService::class.java).apply {
                     putExtra("msg", body)

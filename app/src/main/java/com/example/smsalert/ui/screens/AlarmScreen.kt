@@ -30,10 +30,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -109,7 +111,7 @@ fun AlarmScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "紧急短信警报",
+                text = stringResource(R.string.alarm_title),
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 color = AlarmTitleRed,
@@ -149,7 +151,7 @@ fun AlarmScreen(
                     .padding(20.dp),
             ) {
                 Text(
-                    text = "短信内容",
+                    text = stringResource(R.string.alarm_sms_content_label),
                     fontSize = 11.sp,
                     color = AlarmCardLabel,
                     letterSpacing = 0.06.sp,
@@ -178,7 +180,7 @@ fun AlarmScreen(
                 ),
             ) {
                 Text(
-                    text = "我已确认",
+                    text = stringResource(R.string.alarm_confirm_button),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.06.sp,
@@ -188,7 +190,7 @@ fun AlarmScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "点击确认后将关闭警报",
+                text = stringResource(R.string.alarm_dismiss_hint),
                 fontSize = 11.sp,
                 color = AlarmHintText,
             )

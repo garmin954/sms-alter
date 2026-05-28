@@ -15,25 +15,22 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smsalert.LogStore
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
+import com.example.smsalert.viewmodel.HistoryViewModel
 
 @Composable
 fun HistoryScreen(
     modifier: Modifier = Modifier,
+    viewModel: HistoryViewModel = viewModel(),
 ) {
-    var logs by remember { mutableStateOf(LogStore.entries.toList()) }
-    var logCount by remember { mutableStateOf(LogStore.entries.size) }
-
-    LaunchedEffect(Unit) {
-        LogStore.events.collect {
-            logs = LogStore.entries.toList()
-            logCount = LogStore.entries.size
-        }
-    }
+    val logs by viewModel.logs.collectAsState()
+    val logCount by viewModel.logCount.collectAsState()
 
     Column(
         modifier = modifier
@@ -49,14 +46,14 @@ fun HistoryScreen(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
         ) {
             Text(
-                text = "日志",
+                text = stringResource(R.string.history_title),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = DarkBlue,
                 modifier = Modifier.weight(1f),
             )
             Text(
-                text = "$logCount 条",
+                text = stringResource(R.string.log_count_format, logCount),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextGray,
@@ -67,17 +64,13 @@ fun HistoryScreen(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "清空",
+                text = stringResource(R.string.clear_button),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = DangerRed,
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable {
-                        LogStore.clear()
-                        logs = emptyList()
-                        logCount = 0
-                    }
+                    .clickable { viewModel.clearLogs() }
                     .padding(4.dp),
             )
         }
@@ -91,7 +84,7 @@ fun HistoryScreen(
                     .padding(24.dp),
             ) {
                 Text(
-                    text = "暂无日志",
+                    text = stringResource(R.string.no_logs),
                     fontSize = 14.sp,
                     color = TextGray,
                 )

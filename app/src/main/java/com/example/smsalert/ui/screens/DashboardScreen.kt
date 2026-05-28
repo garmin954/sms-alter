@@ -1,7 +1,5 @@
 package com.example.smsalert.ui.screens
 
-import android.content.Intent
-import android.os.Build
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -15,40 +13,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smsalert.AlertService
-import com.example.smsalert.KeywordStore
-import com.example.smsalert.MonitorService
-import com.example.smsalert.SmsReceiver
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.smsalert.R
 import com.example.smsalert.ui.components.KeywordCard
 import com.example.smsalert.ui.components.ListeningOrb
-import com.example.smsalert.ui.components.checkEssentialPermissions
 import com.example.smsalert.ui.theme.*
-
-private const val PREFS_NAME = "sms_alert_prefs"
-private const val KEY_LISTENING = "is_listening"
+import com.example.smsalert.viewmodel.DashboardViewModel
 
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
+    viewModel: DashboardViewModel = viewModel(),
 ) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
-
-    var isListening by remember {
-        mutableStateOf(
-            prefs.getBoolean(KEY_LISTENING, MonitorService.isRunning())
-        )
-    }
-    var keywords by remember { mutableStateOf(KeywordStore.getKeywords(context)) }
-    var showPermissionDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        keywords = KeywordStore.getKeywords(context)
-    }
+    val isListening by viewModel.isListening.collectAsState()
+    val keywords by viewModel.keywords.collectAsState()
+    val showPermissionDialog by viewModel.showPermissionDialog.collectAsState()
 
     Column(
         modifier = modifier
@@ -59,63 +42,29 @@ fun DashboardScreen(
     ) {
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Listening Orb
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier.fillMaxWidth(),
         ) {
             ListeningOrb(
                 isListening = isListening,
-                onClick = {
-                    val nextState = !isListening
-                    if (nextState) {
-                        if (!checkEssentialPermissions(context)) {
-                            showPermissionDialog = true
-                            return@ListeningOrb
-                        }
-                    }
-                    isListening = nextState
-                    prefs.edit().putBoolean(KEY_LISTENING, isListening).apply()
-                    if (isListening) {
-                        MonitorService.start(context)
-                    } else {
-                        MonitorService.stop(context)
-                    }
-                    SmsReceiver.setEnabled(context, isListening)
-                },
+                onClick = viewModel::toggleListening,
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Keyword Card
         KeywordCard(
             keywords = keywords,
-            onAddKeyword = { kw ->
-                KeywordStore.addKeyword(context, kw)
-                keywords = KeywordStore.getKeywords(context)
-            },
-            onRemoveKeyword = { kw ->
-                KeywordStore.removeKeyword(context, kw)
-                keywords = KeywordStore.getKeywords(context)
-            },
+            onAddKeyword = viewModel::addKeyword,
+            onRemoveKeyword = viewModel::removeKeyword,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Test alarm button
         OutlinedButton(
-            onClick = {
-                val intent = Intent(context, AlertService::class.java).apply {
-                    putExtra("msg", "模拟报警测试：检测到紧急关键词")
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
-            },
+            onClick = viewModel::testAlarm,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
@@ -135,7 +84,7 @@ fun DashboardScreen(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "触发报警模拟测试",
+                text = stringResource(R.string.test_alarm_button),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = DangerRed,
@@ -147,16 +96,16 @@ fun DashboardScreen(
 
     if (showPermissionDialog) {
         AlertDialog(
-            onDismissRequest = { showPermissionDialog = false },
+            onDismissRequest = viewModel::dismissPermissionDialog,
             title = {
-                Text("权限未授予", fontWeight = FontWeight.Bold, color = DarkBlue)
+                Text(stringResource(R.string.permission_not_granted_title), fontWeight = FontWeight.Bold, color = DarkBlue)
             },
             text = {
-                Text("请前往「设置」页面检查并开启所需权限", color = TextGray)
+                Text(stringResource(R.string.permission_not_granted_message), color = TextGray)
             },
             confirmButton = {
-                TextButton(onClick = { showPermissionDialog = false }) {
-                    Text("知道了", color = PrimaryBlue)
+                TextButton(onClick = viewModel::dismissPermissionDialog) {
+                    Text(stringResource(R.string.dismiss_button), color = PrimaryBlue)
                 }
             },
         )

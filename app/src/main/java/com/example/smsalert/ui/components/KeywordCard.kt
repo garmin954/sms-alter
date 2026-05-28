@@ -13,10 +13,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
 
 @Composable
@@ -36,7 +38,7 @@ fun KeywordCard(
             .padding(24.dp),
     ) {
         Text(
-            text = "报警关键词设置",
+            text = stringResource(R.string.keyword_settings_title),
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = DarkBlue,
@@ -54,7 +56,7 @@ fun KeywordCard(
                 onValueChange = { inputText = it },
                 placeholder = {
                     Text(
-                        "输入关键词...",
+                        stringResource(R.string.keyword_input_hint),
                         fontSize = 14.sp,
                         color = TextGray,
                     )
@@ -102,7 +104,7 @@ fun KeywordCard(
                 ),
             ) {
                 Text(
-                    text = "添加",
+                    text = stringResource(R.string.add_button),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Color.White,
