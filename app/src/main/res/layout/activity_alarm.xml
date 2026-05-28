@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0000">
+
+    <!-- 闪烁的红色背景脉冲层 -->
+    <View
+        android:id="@+id/vPulseBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_alarm_screen"
+        android:alpha="0.3" />
+
+    <!-- 主内容区域 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="32dp"
+            android:paddingTop="80dp">
+
+            <!-- 警告图标（带闪烁动画） -->
+            <TextView
+                android:id="@+id/tvWarningIcon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚠"
+                android:textSize="72sp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- 标题 -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="紧急短信警报"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:textColor="#FF5252"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="EMERGENCY SMS ALERT"
+                android:textSize="14sp"
+                android:textColor="#CC4242"
+                android:letterSpacing="0.12"
+                android:layout_marginBottom="28dp" />
+
+            <!-- 分割线 -->
+            <View
+                android:layout_width="80dp"
+                android:layout_height="3dp"
+                android:background="#D32F2F"
+                android:layout_marginBottom="28dp" />
+
+            <!-- 短信内容卡片 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#1A1111"
+                android:padding="20dp"
+                android:gravity="center"
+                android:layout_marginBottom="40dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="短信内容"
+                    android:textSize="11sp"
+                    android:textColor="#884444"
+                    android:letterSpacing="0.06"
+                    android:layout_marginBottom="12dp" />
+
+                <TextView
+                    android:id="@+id/tvAlarmMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="正在加载..."
+                    android:textSize="16sp"
+                    android:textColor="#FFCCCC"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.5"
+                    android:maxLines="8"
+                    android:ellipsize="end" />
+
+            </LinearLayout>
+
+            <!-- 确认按钮区域 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btnDismiss"
+                    android:layout_width="220dp"
+                    android:layout_height="52dp"
+                    android:text="我已确认"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/bg_alarm_dismiss"
+                    android:stateListAnimator="@null"
+                    android:elevation="0dp"
+                    android:letterSpacing="0.06"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="点击确认后将关闭警报"
+                    android:textSize="11sp"
+                    android:textColor="#553333" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+</FrameLayout>

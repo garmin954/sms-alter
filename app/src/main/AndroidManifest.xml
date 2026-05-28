@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 短信权限 -->
+    <uses-permission android:name="android.permission.RECEIVE_SMS"/>
+    <uses-permission android:name="android.permission.READ_SMS"/>
+
+    <!-- 震动 -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
+
+    <!-- 前台服务 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+
+    <!-- Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- 唤醒屏幕 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!-- 忽略电池优化（防后台清理） -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+
+    <!-- 全屏通知权限 (Android 9+) -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
+
+    <!-- 悬浮窗/后台弹出界面权限（用于从后台或锁屏拉起警报页面） -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="SMS Alert"
+        android:theme="@style/Theme.SmsAlertApp">
+
+        <activity
+            android:name=".AlarmActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"/>
+
+        <activity
+            android:name=".LogActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".AlertService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="urgent_sms_alert" />
+        </service>
+
+        <service
+            android:name=".MonitorService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="sms_monitoring" />
+        </service>
+
+        <receiver
+            android:name=".SmsReceiver"
+            android:exported="true">
+            <intent-filter android:priority="1000">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
+            </intent-filter>
+        </receiver>
+
+    </application>
+
+</manifest>
