@@ -19,7 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
 import com.example.smsalert.viewmodel.HistoryViewModel
@@ -27,7 +27,7 @@ import com.example.smsalert.viewmodel.HistoryViewModel
 @Composable
 fun HistoryScreen(
     modifier: Modifier = Modifier,
-    viewModel: HistoryViewModel = viewModel(),
+    viewModel: HistoryViewModel = hiltViewModel(),
 ) {
     val logs by viewModel.logs.collectAsState()
     val logCount by viewModel.logCount.collectAsState()

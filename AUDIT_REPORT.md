@@ -276,7 +276,7 @@ UI (Compose)
 
 ### 第三轮: 架构升级（1-2 周）
 
-- [ ] 引入 Hilt 依赖注入
+- [x] 引入 Hilt 依赖注入（Hilt 2.51.1, AGP 8.4.0, Gradle 8.9; @HiltAndroidApp, @AndroidEntryPoint, @HiltViewModel）
 - [ ] `SharedPreferences` → `DataStore`
 - [ ] 引入 Room 存储历史警报记录（可搜索、可统计）
 - [ ] CI/CD pipeline（GitHub Actions）

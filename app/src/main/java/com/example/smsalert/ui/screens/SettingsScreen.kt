@@ -11,7 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smsalert.R
 import com.example.smsalert.ui.components.StatusCard
 import com.example.smsalert.ui.theme.*
@@ -23,7 +23,7 @@ fun SettingsScreen(
     onOpenSetting: (String) -> Unit = {},
     permissionsRefreshKey: Int = 0,
     modifier: Modifier = Modifier,
-    viewModel: SettingsViewModel = viewModel(),
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     LaunchedEffect(permissionsRefreshKey) {
         viewModel.refreshPermissions()

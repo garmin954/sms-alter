@@ -10,7 +10,9 @@ import android.os.Build
 import android.os.IBinder
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MonitorService : Service() {
 
     companion object {

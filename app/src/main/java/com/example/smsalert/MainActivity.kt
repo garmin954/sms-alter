@@ -13,6 +13,8 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.WindowCompat
+import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
@@ -21,7 +23,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -33,6 +34,7 @@ import com.example.smsalert.ui.screens.SettingsScreen
 import com.example.smsalert.ui.theme.Background
 import com.example.smsalert.ui.theme.SmsAlertTheme
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private var permissionRefreshKey by mutableIntStateOf(0)

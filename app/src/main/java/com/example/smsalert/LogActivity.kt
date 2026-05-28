@@ -1,6 +1,7 @@
 package com.example.smsalert
 
 import android.os.Bundle
+import dagger.hilt.android.AndroidEntryPoint
 import android.os.Handler
 import android.os.Looper
 import android.text.method.ScrollingMovementMethod
@@ -11,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class LogActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())

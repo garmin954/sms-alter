@@ -17,7 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.smsalert.R
 import com.example.smsalert.ui.components.KeywordCard
 import com.example.smsalert.ui.components.ListeningOrb
@@ -27,7 +27,7 @@ import com.example.smsalert.viewmodel.DashboardViewModel
 @Composable
 fun DashboardScreen(
     modifier: Modifier = Modifier,
-    viewModel: DashboardViewModel = viewModel(),
+    viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val isListening by viewModel.isListening.collectAsState()
     val keywords by viewModel.keywords.collectAsState()

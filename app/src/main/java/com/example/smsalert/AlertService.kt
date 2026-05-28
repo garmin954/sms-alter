@@ -6,7 +6,9 @@ import android.content.Intent
 import android.media.RingtoneManager
 import android.os.*
 import androidx.core.app.NotificationCompat
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class AlertService : Service() {
 
     companion object {

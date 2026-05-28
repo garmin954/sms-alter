@@ -4,19 +4,22 @@ import android.app.Application
 import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.smsalert.AlertService
 import com.example.smsalert.KeywordStore
 import com.example.smsalert.MonitorService
 import com.example.smsalert.R
 import com.example.smsalert.SmsReceiver
 import com.example.smsalert.ui.components.checkEssentialPermissions
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-class DashboardViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
+    application: Application,
+) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("sms_alert_prefs", Application.MODE_PRIVATE)
 
