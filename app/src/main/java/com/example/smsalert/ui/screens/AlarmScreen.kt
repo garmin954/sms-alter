@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,14 +23,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -51,29 +50,23 @@ fun AlarmScreen(
         SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
     }
 
-    // Warning icon flash (500ms, alpha 1.0 ↔ 0.15, reverse infinite)
-    val warningAlpha by rememberInfiniteTransition(label = "warning").animateFloat(
+    // Warning icon flash (500ms, alpha 1.0 ↔ 0.15)
+    val iconAlpha by rememberInfiniteTransition(label = "icon").animateFloat(
         initialValue = 1.0f,
         targetValue = 0.15f,
         animationSpec = infiniteRepeatable(
             animation = tween(500, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
-        label = "warningAlpha",
+        label = "iconAlpha",
     )
 
-    // Background pulse starts after 1.2s delay
-    var pulseStarted by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(1200)
-        pulseStarted = true
-    }
-
+    // Full-screen breathing pulse (1500ms, alpha 0.0 ↔ 1.0)
     val pulseAlpha by rememberInfiniteTransition(label = "pulse").animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
+        initialValue = 0.0f,
+        targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = LinearEasing),
+            animation = tween(1500, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse,
         ),
         label = "pulseAlpha",
@@ -84,12 +77,12 @@ fun AlarmScreen(
             .fillMaxSize()
             .background(AlarmBg),
     ) {
-        // Pulse background layer
+        // Full-screen breathing pulse overlay (always visible)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(AlarmPulseRed)
-                .alpha(if (pulseStarted) pulseAlpha else 0.3f),
+                .alpha(pulseAlpha)
+                .background(AlarmPulseRed),
         )
 
         // Main scrollable content
@@ -98,33 +91,37 @@ fun AlarmScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp)
-                .padding(top = 80.dp, bottom = 32.dp),
+                .padding(horizontal = 28.dp)
+                .padding(top = 56.dp, bottom = 36.dp),
         ) {
-            // Warning icon
+            // Warning triangle icon — large and bright
             Text(
                 text = "⚠",
-                fontSize = 72.sp,
-                modifier = Modifier.alpha(warningAlpha),
+                fontSize = 84.sp,
+                color = AlarmIconAmber,
+                modifier = Modifier.alpha(iconAlpha),
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // Title
             Text(
                 text = stringResource(R.string.alarm_title),
-                fontSize = 28.sp,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
                 color = AlarmTitleRed,
-                letterSpacing = 0.08.sp,
+                letterSpacing = 1.sp,
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
+            // Subtitle
             Text(
                 text = "EMERGENCY SMS ALERT",
-                fontSize = 14.sp,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
                 color = AlarmSubtitleRed,
-                letterSpacing = 0.12.sp,
+                letterSpacing = 2.sp,
             )
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -132,8 +129,9 @@ fun AlarmScreen(
             // Divider
             Box(
                 modifier = Modifier
-                    .width(80.dp)
-                    .height(3.dp)
+                    .width(48.dp)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
                     .background(AlarmDividerRed),
             )
 
@@ -144,54 +142,62 @@ fun AlarmScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        color = AlarmCardBg,
-                        shape = RoundedCornerShape(0.dp),
-                    )
-                    .padding(20.dp),
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(AlarmCardBg)
+                    .border(1.dp, AlarmDividerRed, RoundedCornerShape(16.dp))
+                    .padding(24.dp),
             ) {
                 Text(
                     text = stringResource(R.string.alarm_sms_content_label),
-                    fontSize = 11.sp,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = AlarmCardLabel,
-                    letterSpacing = 0.06.sp,
+                    letterSpacing = 0.8.sp,
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+
+                Spacer(modifier = Modifier.height(14.dp))
+
                 Text(
                     text = "[$timeStr]\n\n$message",
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
                     color = AlarmCardText,
                     textAlign = TextAlign.Center,
-                    lineHeight = 24.sp,
+                    lineHeight = 22.sp,
                 )
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(44.dp))
 
+            // Confirm button
             Button(
                 onClick = onDismiss,
                 modifier = Modifier
-                    .width(220.dp)
-                    .height(52.dp),
-                shape = RoundedCornerShape(8.dp),
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AlarmButtonRed,
                     contentColor = AlarmCardText,
                 ),
+                elevation = ButtonDefaults.buttonElevation(
+                    defaultElevation = 4.dp,
+                    pressedElevation = 1.dp,
+                ),
             ) {
                 Text(
                     text = stringResource(R.string.alarm_confirm_button),
-                    fontSize = 17.sp,
+                    fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.06.sp,
+                    letterSpacing = 0.5.sp,
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
                 text = stringResource(R.string.alarm_dismiss_hint),
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 color = AlarmHintText,
             )
         }
