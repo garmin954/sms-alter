@@ -50,7 +50,7 @@ import java.util.Date
 import java.util.Locale
 
 /** 用户确认前的 UI 倒计时秒数 */
-private const val COUNTDOWN_SECONDS = 10
+private const val COUNTDOWN_SECONDS = 20
 
 /** 倒计时归零后，系统闹钟延迟秒数（从归零时刻起算）*/
 private const val FALLBACK_DELAY_SECONDS = 15L

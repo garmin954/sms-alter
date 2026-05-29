@@ -1,6 +1,9 @@
 package com.example.smsalert
 
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -22,8 +25,21 @@ class AlarmActivity : ComponentActivity() {
     private var alarmMessage by mutableStateOf("")
     private var triggerKey by mutableIntStateOf(0)
 
+    private val dismissReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            LogStore.i("收到通知栏关闭广播，关闭 AlarmActivity")
+            finish()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        registerReceiver(
+            dismissReceiver,
+            IntentFilter(AlertService.ACTION_FINISH_ACTIVITY),
+            Context.RECEIVER_NOT_EXPORTED
+        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             setShowWhenLocked(true)
@@ -75,6 +91,11 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            unregisterReceiver(dismissReceiver)
+        } catch (e: IllegalArgumentException) {
+            // already unregistered
+        }
         stopService(Intent(this, AlertService::class.java))
     }
 }

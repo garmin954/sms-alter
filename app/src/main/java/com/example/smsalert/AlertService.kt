@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.os.*
+import android.provider.AlarmClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.smsalert.data.dao.AlertDao
@@ -21,6 +22,8 @@ class AlertService : Service() {
 
     companion object {
         const val CHANNEL_ID = "alert_channel"
+        const val ACTION_DISMISS = "com.example.smsalert.ACTION_DISMISS_ALARM"
+        const val ACTION_FINISH_ACTIVITY = "com.example.smsalert.ACTION_FINISH_ALARM_ACTIVITY"
     }
 
     @Inject lateinit var alertDao: AlertDao
@@ -28,6 +31,7 @@ class AlertService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var ringtone: android.media.Ringtone? = null
     private var isActive = false
+    private var currentMessage: String = ""
     private val serviceScope = CoroutineScope(Dispatchers.IO)
 
     override fun onCreate() {
@@ -37,7 +41,19 @@ class AlertService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Handle dismiss action from notification button
+        if (ACTION_DISMISS == intent?.action) {
+            LogStore.i("通知栏确认按钮：关闭警报")
+            tryDismissSystemAlarm()
+            sendBroadcast(Intent(ACTION_FINISH_ACTIVITY).apply {
+                setPackage(packageName)
+            })
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         val msg = intent?.getStringExtra("msg") ?: ""
+        currentMessage = msg
         LogStore.i("AlertService onStartCommand: ${msg.take(30)}...")
 
         // Persist alert to Room
@@ -65,6 +81,14 @@ class AlertService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        val dismissIntent = Intent(this, AlertService::class.java).apply {
+            action = ACTION_DISMISS
+        }
+        val dismissPendingIntent = PendingIntent.getService(
+            this, 1, dismissIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.alert_notification_title))
             .setContentText(msg)
@@ -73,6 +97,12 @@ class AlertService : Service() {
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setFullScreenIntent(pendingIntent, true)
             .setOngoing(true)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(msg))
+            .addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                getString(R.string.alarm_confirm_button),
+                dismissPendingIntent
+            )
             .build()
 
         startForeground(1, notification)
@@ -172,4 +202,18 @@ class AlertService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun tryDismissSystemAlarm() {
+        try {
+            val intent = Intent(AlarmClock.ACTION_DISMISS_ALARM).apply {
+                putExtra(AlarmClock.EXTRA_ALARM_SEARCH_MODE, AlarmClock.ALARM_SEARCH_MODE_LABEL)
+                putExtra(AlarmClock.EXTRA_MESSAGE, currentMessage.take(40))
+                putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+            }
+            startActivity(intent)
+            LogStore.i("已尝试撤销系统闹钟（通知栏确认）")
+        } catch (e: Exception) {
+            LogStore.w("撤销系统闹钟失败：${e.message}")
+        }
+    }
 }
