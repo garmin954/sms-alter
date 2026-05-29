@@ -55,7 +55,7 @@
         android:name=".SmsAlertApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="SMS Alert"
+        android:label="Pulse"
         android:theme="@style/Theme.SmsAlertApp"
         android:usesCleartextTraffic="false">
 

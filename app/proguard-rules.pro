@@ -27,7 +27,7 @@
 
 # ── Room ──
 
--keep class com.example.smsalert.data.entity.** { *; }
+-keep class com.example.pulse.data.entity.** { *; }
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class * { *; }
 -keep @androidx.room.Dao interface * { *; }
@@ -42,7 +42,7 @@
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 
 # Keep Hilt generated components
--keep class com.example.smsalert.SmsAlertApp { *; }
+-keep class com.example.pulse.SmsAlertApp { *; }
 -keep class * implements dagger.hilt.internal.GeneratedComponent { *; }
 -keep class * extends dagger.hilt.android.internal.managers.ViewComponentManager$FragmentContextWrapper { *; }
 
@@ -75,16 +75,16 @@
 # ── App-specific ──
 
 # Keep data classes used in state flows / serialization
--keep class com.example.smsalert.ui.components.PermissionItem { *; }
--keep class com.example.smsalert.ui.components.BottomNavItem { *; }
--keep class com.example.smsalert.ui.components.LogItem { *; }
--keep class com.example.smsalert.data.entity.AlertRecord { *; }
+-keep class com.example.pulse.ui.components.PermissionItem { *; }
+-keep class com.example.pulse.ui.components.BottomNavItem { *; }
+-keep class com.example.pulse.ui.components.LogItem { *; }
+-keep class com.example.pulse.data.entity.AlertRecord { *; }
 
 # Keep BroadcastReceiver registered in manifest
--keep class com.example.smsalert.SmsReceiver { *; }
+-keep class com.example.pulse.SmsReceiver { *; }
 
 # Keep ViewModel constructors for Hilt injection
--keepclassmembers class com.example.smsalert.viewmodel.** {
+-keepclassmembers class com.example.pulse.viewmodel.** {
     <init>(...);
 }
 
@@ -95,6 +95,6 @@
     public static int d(...);
 }
 
--assumenosideeffects class com.example.smsalert.LogStore {
+-assumenosideeffects class com.example.pulse.LogStore {
     public static void d(...);
 }

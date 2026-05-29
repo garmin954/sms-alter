@@ -1,0 +1,116 @@
+package com.example.pulse.ui.screens
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.pulse.R
+import com.example.pulse.ui.components.KeywordCard
+import com.example.pulse.ui.components.ListeningOrb
+import com.example.pulse.ui.theme.*
+import com.example.pulse.viewmodel.DashboardViewModel
+
+@Composable
+fun DashboardScreen(
+    modifier: Modifier = Modifier,
+    viewModel: DashboardViewModel = hiltViewModel(),
+) {
+    val isListening by viewModel.isListening.collectAsState()
+    val keywords by viewModel.keywords.collectAsState()
+    val showPermissionDialog by viewModel.showPermissionDialog.collectAsState()
+    val elapsedTime by viewModel.elapsedTime.collectAsState()
+    val colors = LocalAppColors.current
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(top = 24.dp),
+    ) {
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            ListeningOrb(
+                isListening = isListening,
+                elapsedTime = elapsedTime,
+                onClick = viewModel::toggleListening,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        KeywordCard(
+            keywords = keywords,
+            onAddKeyword = viewModel::addKeyword,
+            onRemoveKeyword = viewModel::removeKeyword,
+            modifier = Modifier.padding(horizontal = 24.dp),
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        OutlinedButton(
+            onClick = viewModel::testAlarm,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, colors.dangerRed),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                contentColor = colors.dangerRed,
+            ),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Campaign,
+                contentDescription = null,
+                tint = colors.dangerRed,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.test_alarm_button),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = colors.dangerRed,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(100.dp))
+    }
+
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPermissionDialog,
+            title = {
+                Text(stringResource(R.string.permission_not_granted_title), fontWeight = FontWeight.Bold, color = colors.darkBlue)
+            },
+            text = {
+                Text(stringResource(R.string.permission_not_granted_message), color = colors.textGray)
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissPermissionDialog) {
+                    Text(stringResource(R.string.dismiss_button), color = colors.primaryBlue)
+                }
+            },
+        )
+    }
+}
