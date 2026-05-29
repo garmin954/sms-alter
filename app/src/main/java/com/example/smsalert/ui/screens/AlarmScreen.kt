@@ -1,7 +1,5 @@
 package com.example.smsalert.ui.screens
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
@@ -31,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.smsalert.AlarmReceiver
 import com.example.smsalert.AlertService
 import com.example.smsalert.LogStore
 import com.example.smsalert.R
@@ -59,9 +55,6 @@ private const val COUNTDOWN_SECONDS = 10
 /** 倒计时归零后，系统闹钟延迟秒数（从归零时刻起算）*/
 private const val FALLBACK_DELAY_SECONDS = 15L
 
-/** AlarmManager PendingIntent requestCode */
-private const val ALARM_REQUEST_CODE = 2001
-
 /**
  * 通过 ACTION_SET_ALARM 在系统时钟 App 创建可见闹钟（用户可在时钟 App 中看到）。
  * skipUi=true 静默创建，不弹出时钟界面。
@@ -69,6 +62,10 @@ private const val ALARM_REQUEST_CODE = 2001
 private fun setSystemAlarmViaIntent(context: Context, message: String) {
     val calendar = java.util.Calendar.getInstance().apply {
         add(java.util.Calendar.SECOND, FALLBACK_DELAY_SECONDS.toInt())
+        if (get(java.util.Calendar.SECOND) > 0) {
+            add(java.util.Calendar.MINUTE, 1)
+        }
+        set(java.util.Calendar.SECOND, 0)
     }
     val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
     val minute = calendar.get(java.util.Calendar.MINUTE)
@@ -105,37 +102,6 @@ private fun tryDismissSystemAlarm(context: Context, message: String) {
     }
 }
 
-/**
- * 通过 AlarmManager.setExact(RTC_WAKEUP) 设置精确兜底闹钟。
- * 触发时由 [AlarmReceiver] 接收，重新启动 AlertService 发出警报。
- * 返回本次设置的 PendingIntent（用于后续取消）。
- */
-private fun scheduleAlarmManagerFallback(context: Context, message: String): PendingIntent {
-    val triggerAtMs = System.currentTimeMillis() + FALLBACK_DELAY_SECONDS * 1000L
-    val receiverIntent = Intent(context, AlarmReceiver::class.java).apply {
-        putExtra("msg", message)
-    }
-    val pendingIntent = PendingIntent.getBroadcast(
-        context, ALARM_REQUEST_CODE, receiverIntent,
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-    )
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMs, pendingIntent)
-    LogStore.i("兜底闹钟已设置，${FALLBACK_DELAY_SECONDS}s 后触发 AlarmReceiver")
-    return pendingIntent
-}
-
-/**
- * 取消通过 [scheduleAlarmManagerFallback] 设置的兜底闹钟。
- */
-private fun cancelAlarmManagerFallback(context: Context, pendingIntent: PendingIntent?) {
-    if (pendingIntent == null) return
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    alarmManager.cancel(pendingIntent)
-    pendingIntent.cancel()
-    LogStore.i("兜底闹钟已取消")
-}
-
 @Composable
 fun AlarmScreen(
     message: String,
@@ -149,31 +115,21 @@ fun AlarmScreen(
     }
 
     var remainingSeconds by remember { mutableIntStateOf(COUNTDOWN_SECONDS) }
-    // 保存兜底闹钟的 PendingIntent，用于用户确认时取消
-    var fallbackPendingIntent by remember { mutableStateOf<PendingIntent?>(null) }
 
-    // 20s UI 倒计时；归零时（用户未确认）创建 5s 兜底闹钟，停止 AlertService
     LaunchedEffect(Unit) {
         while (remainingSeconds > 0) {
             kotlinx.coroutines.delay(1000)
             remainingSeconds--
         }
-        // 倒计时归零：
-        // 1. ACTION_SET_ALARM 在系统时钟 App 创建可见闹钟（5s 后）
+        // 倒计时归零：创建系统时钟可见闹钟，停止 AlertService
         setSystemAlarmViaIntent(context, message)
-        // 2. AlarmManager.setExact 作为可靠唤醒保障，保存以便用户确认时取消
-        fallbackPendingIntent = scheduleAlarmManagerFallback(context, message)
-        LogStore.i("倒计时到期，停止 AlertService，系统闹钟 + 兜底闹钟已设置")
+        LogStore.i("倒计时到期，停止 AlertService，系统闹钟已设置")
         context.stopService(Intent(context, AlertService::class.java))
     }
 
-    // 用户主动确认：取消 AlarmManager 兜底闹钟，尝试撤销系统时钟闹钟，停止 AlertService
+    // 用户主动确认：尝试撤销系统时钟闹钟，停止 AlertService
     val dismissWithCancel: () -> Unit = {
-        // 如果倒计时已归零（已设闹钟），则尝试撤销
-        if (fallbackPendingIntent != null) {
-            cancelAlarmManagerFallback(context, fallbackPendingIntent)
-            tryDismissSystemAlarm(context, message)
-        }
+        tryDismissSystemAlarm(context, message)
         context.stopService(Intent(context, AlertService::class.java))
         LogStore.i("用户已确认警报，AlertService 已停止")
         onDismiss()
