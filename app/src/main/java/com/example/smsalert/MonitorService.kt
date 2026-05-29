@@ -31,6 +31,8 @@ class MonitorService : Service() {
     companion object {
         const val CHANNEL_ID = "monitor_channel"
         const val NOTIFICATION_ID = 100
+        private const val PREFS_NAME = "monitor_prefs"
+        private const val KEY_START_TIME = "start_time_elapsed"
 
         @Volatile
         private var _isRunning = false
@@ -40,6 +42,23 @@ class MonitorService : Service() {
         fun isRunning(): Boolean = _isRunning
         fun getElapsedMs(): Long =
             if (_isRunning) SystemClock.elapsedRealtime() - _startTime else 0L
+
+        private fun restoreStartTime(context: Context): Long {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val saved = prefs.getLong(KEY_START_TIME, 0L)
+            // 如果保存的值比当前 elapsedRealtime 还大，说明设备重启过，抛弃旧值
+            return if (saved > 0L && saved <= SystemClock.elapsedRealtime()) saved else 0L
+        }
+
+        private fun persistStartTime(context: Context, time: Long) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().putLong(KEY_START_TIME, time).apply()
+        }
+
+        private fun clearPersistedStartTime(context: Context) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit().remove(KEY_START_TIME).apply()
+        }
 
         fun start(context: Context) {
             val intent = Intent(context, MonitorService::class.java)
@@ -57,6 +76,7 @@ class MonitorService : Service() {
         }
 
         fun stop(context: Context) {
+            clearPersistedStartTime(context)
             context.stopService(Intent(context, MonitorService::class.java))
         }
     }
@@ -64,8 +84,10 @@ class MonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         _isRunning = true
-        _startTime = SystemClock.elapsedRealtime()
-        LogStore.i("MonitorService onCreate")
+        val restored = restoreStartTime(this)
+        _startTime = if (restored > 0L) restored else SystemClock.elapsedRealtime()
+        persistStartTime(this, _startTime)
+        LogStore.i("MonitorService onCreate, _startTime=$_startTime (restored=${restored > 0L})")
         createChannel()
     }
 
