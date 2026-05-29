@@ -25,13 +25,13 @@ android {
 
     signingConfigs {
         release {
-            def file = findProperty('RELEASE_KEYSTORE_FILE') ?: System.getenv('RELEASE_KEYSTORE_FILE')
+            def ksFile = findProperty('RELEASE_KEYSTORE_FILE') ?: System.getenv('RELEASE_KEYSTORE_FILE')
             def password = findProperty('RELEASE_KEYSTORE_PASSWORD') ?: System.getenv('RELEASE_KEYSTORE_PASSWORD')
             def alias = findProperty('RELEASE_KEY_ALIAS') ?: System.getenv('RELEASE_KEY_ALIAS')
             def keyPassword = findProperty('RELEASE_KEY_PASSWORD') ?: System.getenv('RELEASE_KEY_PASSWORD')
 
-            if (file != null) {
-                storeFile file(file)
+            if (ksFile != null) {
+                storeFile file(ksFile)
                 storePassword password
                 keyAlias alias
                 keyPassword keyPassword
