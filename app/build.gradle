@@ -25,16 +25,16 @@ android {
 
     signingConfigs {
         release {
-            def ksFile = findProperty('RELEASE_KEYSTORE_FILE') ?: System.getenv('RELEASE_KEYSTORE_FILE')
-            def password = findProperty('RELEASE_KEYSTORE_PASSWORD') ?: System.getenv('RELEASE_KEYSTORE_PASSWORD')
-            def alias = findProperty('RELEASE_KEY_ALIAS') ?: System.getenv('RELEASE_KEY_ALIAS')
-            def keyPassword = findProperty('RELEASE_KEY_PASSWORD') ?: System.getenv('RELEASE_KEY_PASSWORD')
+            def sFile = project.findProperty('RELEASE_KEYSTORE_FILE') ?: System.getenv('RELEASE_KEYSTORE_FILE')
+            def sPass = project.findProperty('RELEASE_KEYSTORE_PASSWORD') ?: System.getenv('RELEASE_KEYSTORE_PASSWORD')
+            def sAlias = project.findProperty('RELEASE_KEY_ALIAS') ?: System.getenv('RELEASE_KEY_ALIAS')
+            def sKeyPass = project.findProperty('RELEASE_KEY_PASSWORD') ?: System.getenv('RELEASE_KEY_PASSWORD')
 
-            if (ksFile != null) {
-                storeFile file(ksFile)
-                storePassword password
-                keyAlias alias
-                keyPassword keyPassword
+            if (sFile != null && !sFile.isEmpty()) {
+                storeFile file(sFile)
+                storePassword sPass
+                keyAlias sAlias
+                keyPassword sKeyPass
             }
         }
     }
@@ -42,7 +42,8 @@ android {
     buildTypes {
 
         release {
-            def signingAvailable = (findProperty('RELEASE_KEYSTORE_FILE') ?: System.getenv('RELEASE_KEYSTORE_FILE')) != null
+            def sf = project.findProperty('RELEASE_KEYSTORE_FILE') ?: System.getenv('RELEASE_KEYSTORE_FILE')
+            def signingAvailable = sf != null && !sf.isEmpty()
             if (signingAvailable) {
                 signingConfig signingConfigs.release
             }
