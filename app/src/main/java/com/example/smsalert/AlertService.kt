@@ -53,8 +53,10 @@ class AlertService : Service() {
 
         acquireWakeLock()
 
+        val fromAlarmClock = intent?.getBooleanExtra("from_alarm_clock", false) ?: false
         val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("msg", msg)
+            putExtra("from_alarm_clock", fromAlarmClock)
             this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 

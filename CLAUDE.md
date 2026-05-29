@@ -90,10 +90,16 @@ SmsReceiver.onReceive()
                     │
                     ▼
                 AlarmScreen
-                    ├── 进入即通过 AlarmManager 设置 25s 后触发的系统闹钟
-                    ├── 20s UI 倒计时
-                    ├── 用户确认 → 停止 AlertService → 取消系统闹钟 → dismiss
-                    └── 倒计时归零 → 停止 AlertService（系统闹钟 5s 后兜底）
+                    ├── 10s UI 倒计时
+                    ├── 用户确认 → 停止 AlertService → 取消兜底闹钟 → dismiss
+                    └── 倒计时归零 → 停止 AlertService
+                          ├── ACTION_SET_ALARM 创建系统时钟可见闹钟（15s 后）
+                          └── AlarmManager.setExact 设置兜底闹钟（15s 后）
+                                │
+                                ▼
+                          AlarmReceiver.onReceive()
+                                ├── 启动 AlertService（带 from_alarm_clock=true）
+                                └── AlertService 透传标志 → AlarmActivity 重新激活 AlarmScreen
 ```
 
 ### 3.2 监听控制链路
@@ -129,10 +135,14 @@ DashboardViewModel.toggleListening()
 
 ### 4.3 AlarmScreen 倒计时与兜底
 
-- 常量：`COUNTDOWN_SECONDS = 20`（UI 倒计时），`ALARM_DELAY_SECONDS = 25`（系统闹钟延迟秒数）。
-- **进入即设闹钟**：AlarmScreen 打开时通过 `AlarmManager.setExact(RTC_WAKEUP)` 设置 25s 后触发的系统闹钟，由 `AlarmReceiver` 接收并重启 `AlertService`。
-- **用户点击确认**：停止 AlertService → 取消 AlarmManager 闹钟 → 调用 `onDismiss()` 关闭 Activity。
-- **用户未操作**：20s 倒计时归零 → 停止 AlertService。5s 后 AlarmManager 触发 AlarmReceiver 重新启动 AlertService 作为兜底。
+- 常量：`COUNTDOWN_SECONDS = 10`（UI 倒计时），`FALLBACK_DELAY_SECONDS = 15L`（倒计时归零后兜底闹钟延迟秒数）。总兜底时间 = 10 + 15 = 25s。
+- **双重兜底机制**：倒计时归零时同时设置两种闹钟——
+  - `ACTION_SET_ALARM`：在系统时钟 App 创建用户可见的一次性闹钟。
+  - `AlarmManager.setExact(RTC_WAKEUP)`：精确唤醒，由 `AlarmReceiver` 接收。
+  两者均在倒计时归零后 15s（即 AlarmScreen 打开后 25s）触发。
+- **`from_alarm_clock` 标志**：AlarmReceiver 启动 AlertService 时置为 true，AlertService 透传至 AlarmActivity，确保兜底触发时 UI 正确重置。
+- **用户点击确认**：停止 AlertService → 取消 AlarmManager 闹钟 → 尝试撤销系统时钟闹钟 → 调用 `onDismiss()` 关闭 Activity。
+- **用户未操作**：10s 倒计时归零 → 停止 AlertService → 15s 后双重闹钟触发 → AlarmReceiver 重启 AlertService → AlarmActivity 再次弹出（循环直到用户确认）。
 
 ### 4.4 MonitorService
 
@@ -221,8 +231,8 @@ DashboardViewModel.toggleListening()
 
 ### 7.2 调整报警倒计时或兜底闹钟延迟
 
-- UI 倒计时：修改 `AlarmScreen.kt` 中 `COUNTDOWN_SECONDS` 常量。
-- 系统闹钟延迟：修改 `AlarmScreen.kt` 中 `ALARM_DELAY_SECONDS` 常量（默认 25s）。
+- UI 倒计时：修改 `AlarmScreen.kt` 中 `COUNTDOWN_SECONDS` 常量（默认 10s）。
+- 兜底闹钟延迟：修改 `AlarmScreen.kt` 中 `FALLBACK_DELAY_SECONDS` 常量（默认 15s，从倒计时归零起算）。
 
 ### 7.3 修改报警铃声
 
