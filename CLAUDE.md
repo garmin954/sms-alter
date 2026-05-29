@@ -33,7 +33,7 @@ app/src/main/java/com/example/smsalert/
 ├── SmsReceiverDedup.kt         # 3 秒去重逻辑
 ├── MonitorService.kt           # 监控前台服务：常驻通知，显示监听时长
 ├── AlertService.kt             # 报警前台服务：铃声、振动、WakeLock、启动 AlarmActivity
-├── AlarmReceiver.kt            # 系统闹钟 BroadcastReceiver（保留，当前链路不再使用）
+├── AlarmReceiver.kt            # 系统闹钟 BroadcastReceiver，AlarmManager 触发作为报警兜底
 ├── KeywordStore.kt             # SharedPreferences 关键词存储（JSON 数组格式）
 ├── LogStore.kt                 # 内存日志存储（CopyOnWriteArrayList，上限 500 条）
 ├── data/
@@ -52,7 +52,7 @@ app/src/main/java/com/example/smsalert/
 │   │   ├── DashboardScreen.kt  # 首页：监听球 + 关键词管理 + 测试按钮
 │   │   ├── HistoryScreen.kt    # 历史页：报警记录（Room）+ 运行日志（LogStore）
 │   │   ├── SettingsScreen.kt   # 设置页：权限状态列表
-│   │   └── AlarmScreen.kt      # 全屏报警 Compose UI（10s 倒计时 + 系统闹钟兜底）
+│   │   └── AlarmScreen.kt      # 全屏报警 Compose UI（20s 倒计时 + 系统闹钟兜底）
 │   └── components/
 │       ├── ListeningOrb.kt     # 监听状态球（呼吸动画 + 水波纹）
 │       ├── KeywordCard.kt      # 关键词输入 + Chip 列表
@@ -90,13 +90,10 @@ SmsReceiver.onReceive()
                     │
                     ▼
                 AlarmScreen
-                    ├── 进入即设 60s 系统闹钟（ContentProvider + AlarmManager.setAlarmClock）
-                    ├── 10s UI 倒计时
-                    ├── 用户确认 → 取消闹钟 → dismiss
-                    └── 倒计时归零 → 停止 AlertService（不设新闹钟，等待已设定的闹钟触发）
-                            │
-                            ▼
-                        系统闹钟到点 → getForegroundService 直接启动 AlertService（兜底，不经过 BroadcastReceiver）
+                    ├── 进入即通过 AlarmManager 设置 25s 后触发的系统闹钟
+                    ├── 20s UI 倒计时
+                    ├── 用户确认 → 停止 AlertService → 取消系统闹钟 → dismiss
+                    └── 倒计时归零 → 停止 AlertService（系统闹钟 5s 后兜底）
 ```
 
 ### 3.2 监听控制链路
@@ -132,13 +129,10 @@ DashboardViewModel.toggleListening()
 
 ### 4.3 AlarmScreen 倒计时与兜底
 
-- 常量：`COUNTDOWN_SECONDS = 10`（UI 倒计时），`ALARM_FALLBACK_DELAY_MS = 60_000L`（系统闹钟延迟）。
-- **进入即设闹钟**：AlarmScreen 打开时立即通过两条路径设置 60s 后的系统闹钟：
-  1. `insertSystemAlarm()` — 写入系统时钟 ContentProvider，让闹钟在时钟 App 中可见（兼容多厂商 URI）。
-  2. `AlarmManager.setAlarmClock()` — 作为可靠兜底，确保 Doze 模式下也能唤醒，operation 使用 `PendingIntent.getForegroundService(AlertService)` 直接拉起前台服务。
-- **用户点击确认**：取消 AlarmManager 闹钟 + 从 ContentProvider 删除闹钟条目 → 关闭 Activity → Activity 销毁时停止 AlertService。
-- **用户未操作**：10s 倒计时归零 → 仅停止 AlertService（不设新闹钟）。系统闹钟在设定时刻触发 → `getForegroundService` 直接启动 AlertService → 重新拉起 AlarmActivity（携带 `from_alarm_clock` 标记，`onCreate` 和 `onNewIntent` 均已处理）。
-- AlarmReceiver 已不再参与兜底链路，保留仅用于调试兼容。
+- 常量：`COUNTDOWN_SECONDS = 20`（UI 倒计时），`ALARM_DELAY_SECONDS = 25`（系统闹钟延迟秒数）。
+- **进入即设闹钟**：AlarmScreen 打开时通过 `AlarmManager.setExact(RTC_WAKEUP)` 设置 25s 后触发的系统闹钟，由 `AlarmReceiver` 接收并重启 `AlertService`。
+- **用户点击确认**：停止 AlertService → 取消 AlarmManager 闹钟 → 调用 `onDismiss()` 关闭 Activity。
+- **用户未操作**：20s 倒计时归零 → 停止 AlertService。5s 后 AlarmManager 触发 AlarmReceiver 重新启动 AlertService 作为兜底。
 
 ### 4.4 MonitorService
 
@@ -228,7 +222,7 @@ DashboardViewModel.toggleListening()
 ### 7.2 调整报警倒计时或兜底闹钟延迟
 
 - UI 倒计时：修改 `AlarmScreen.kt` 中 `COUNTDOWN_SECONDS` 常量。
-- 系统闹钟延迟：修改 `AlarmScreen.kt` 中 `ALARM_FALLBACK_DELAY_MS` 常量（默认 60s）。
+- 系统闹钟延迟：修改 `AlarmScreen.kt` 中 `ALARM_DELAY_SECONDS` 常量（默认 25s）。
 
 ### 7.3 修改报警铃声
 
