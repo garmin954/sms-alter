@@ -155,7 +155,9 @@ class AlertService : Service() {
 
         val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         ringtone = RingtoneManager.getRingtone(this, uri).apply {
-            isLooping = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                isLooping = true
+            }
             play()
         }
         LogStore.d("铃声已播放（循环模式）")
