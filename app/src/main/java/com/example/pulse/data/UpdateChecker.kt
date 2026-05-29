@@ -2,6 +2,7 @@ package com.example.pulse.data
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -21,7 +22,7 @@ sealed class UpdateResult {
 object UpdateChecker {
 
     private const val GITHUB_API_URL =
-        "https://api.github.com/repos/garmin954/sms-alter/releases/latest"
+        "https://api.github.com/repos/garmin954/sms-alter/releases"
 
     suspend fun check(currentVersionName: String): UpdateResult = withContext(Dispatchers.IO) {
         try {
@@ -33,14 +34,31 @@ object UpdateChecker {
 
             val responseCode = connection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext UpdateResult.Error("HTTP $responseCode")
+                return@withContext UpdateResult.Error("检查失败（HTTP $responseCode）")
             }
 
             val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val json = JSONObject(body)
-            val tagName = json.getString("tag_name")
-            val htmlUrl = json.getString("html_url")
-            val changelog = json.optString("body", "")
+            val releases = JSONArray(body)
+            if (releases.length() == 0) {
+                return@withContext UpdateResult.UpToDate
+            }
+
+            // Find the first non-draft release
+            var latestRelease: JSONObject? = null
+            for (i in 0 until releases.length()) {
+                val release = releases.getJSONObject(i)
+                if (!release.optBoolean("draft", false)) {
+                    latestRelease = release
+                    break
+                }
+            }
+            if (latestRelease == null) {
+                return@withContext UpdateResult.UpToDate
+            }
+
+            val tagName = latestRelease.getString("tag_name")
+            val htmlUrl = latestRelease.getString("html_url")
+            val changelog = latestRelease.optString("body", "")
 
             val latestVersion = tagName.removePrefix("v")
 

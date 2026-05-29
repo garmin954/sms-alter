@@ -4,10 +4,14 @@ on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: write
+
 jobs:
   release:
     name: Build & Publish Release
     runs-on: ubuntu-latest
+    environment: pulse
 
     steps:
       - uses: actions/checkout@v4
