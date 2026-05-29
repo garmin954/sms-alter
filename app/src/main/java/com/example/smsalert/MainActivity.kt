@@ -185,6 +185,7 @@ class MainActivity : ComponentActivity() {
             "autostart" -> openAppSettings()
             "lockscreen" -> openAppSettings()
             "bgpopup" -> openAppSettings()
+            "alarm" -> openAlarmSettings()
         }
     }
 
@@ -283,6 +284,21 @@ class MainActivity : ComponentActivity() {
 
         openAppSettings()
         Toast.makeText(this, getString(R.string.autostart_manual_hint), Toast.LENGTH_LONG).show()
+    }
+
+    private fun openAlarmSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                    data = Uri.parse("package:$packageName")
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            } catch (e: Exception) {
+                openAppSettings()
+            }
+        } else {
+            openAppSettings()
+        }
     }
 
     private fun openLockScreenSettings() {

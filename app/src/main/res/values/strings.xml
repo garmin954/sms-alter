@@ -28,6 +28,7 @@
     <string name="perm_autostart">自启动</string>
     <string name="perm_lockscreen">锁屏显示</string>
     <string name="perm_bg_popup">后台弹出界面</string>
+    <string name="perm_alarm">闹钟权限</string>
     <string name="perm_granted">已授权</string>
     <string name="perm_not_granted">未授权</string>
     <string name="perm_manual_setup">需手动设置</string>

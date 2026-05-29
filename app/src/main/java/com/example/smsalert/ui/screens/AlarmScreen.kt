@@ -1,9 +1,8 @@
 package com.example.smsalert.ui.screens
 
-import android.app.AlarmManager
-import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.provider.AlarmClock
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -43,7 +42,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smsalert.AlertService
-import com.example.smsalert.AlarmReceiver
 import com.example.smsalert.LogStore
 import com.example.smsalert.R
 import com.example.smsalert.ui.theme.*
@@ -51,9 +49,39 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private const val COUNTDOWN_SECONDS = 30
-private const val ALARM_DELAY_MS = 2_000L
-private const val ALARM_REQUEST_CODE = 1001
+private const val COUNTDOWN_SECONDS = 10
+private const val ALARM_DELAY_SECONDS = 60
+
+/**
+ * 通过系统标准 ACTION_SET_ALARM Intent，让系统时钟 App 创建一条指定时间的闹钟。
+ * 此方式兼容 AOSP/MIUI/ColorOS/EMUI 等主流系统，由系统时钟 App 自行管理响铃。
+ * skipUi=true 表示静默创建，不弹出时钟 App 界面。
+ */
+private fun setSystemAlarmViaIntent(context: Context, message: String) {
+    val calendar = java.util.Calendar.getInstance().apply {
+        add(java.util.Calendar.SECOND, ALARM_DELAY_SECONDS)
+    }
+    val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(java.util.Calendar.MINUTE)
+
+    val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+        putExtra(AlarmClock.EXTRA_HOUR, hour)
+        putExtra(AlarmClock.EXTRA_MINUTES, minute)
+        putExtra(AlarmClock.EXTRA_MESSAGE, message.take(40))
+        putExtra(AlarmClock.EXTRA_VIBRATE, true)
+        // skipUi=true：静默创建，不跳转到时钟 App 界面
+        putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+        // 仅触发一次，不重复
+        putExtra(AlarmClock.EXTRA_DAYS, ArrayList<Int>())
+    }
+
+    try {
+        context.startActivity(intent)
+        LogStore.i("系统闹钟已通过 ACTION_SET_ALARM 设置：${hour}:${String.format("%02d", minute)}")
+    } catch (e: Exception) {
+        LogStore.w("ACTION_SET_ALARM 失败，设备可能不支持系统闹钟 Intent：${e.message}")
+    }
+}
 
 @Composable
 fun AlarmScreen(
@@ -62,7 +90,6 @@ fun AlarmScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val alarmManager = remember { context.getSystemService(Context.ALARM_SERVICE) as AlarmManager }
 
     val timeStr = remember {
         SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
@@ -70,58 +97,30 @@ fun AlarmScreen(
 
     var remainingSeconds by remember { mutableIntStateOf(COUNTDOWN_SECONDS) }
 
-    // 30s countdown: update UI every second
+    // 进入 AlarmScreen：立即通过系统 Intent 在时钟 App 创建 60s 后的系统闹钟，
+    // 再启动 10s UI 倒计时。系统时钟 App 负责在指定时间响铃，本 App 不再介入。
     LaunchedEffect(Unit) {
+        setSystemAlarmViaIntent(context, message)
+
         while (remainingSeconds > 0) {
             kotlinx.coroutines.delay(1000)
             remainingSeconds--
         }
     }
 
-    // When countdown reaches 0, stop AlertService and set system alarm
+    // 倒计时归零：停止 AlertService，不再设新闹钟（已在进入时设好）
     LaunchedEffect(remainingSeconds) {
         if (remainingSeconds == 0) {
-            LogStore.i("30s 倒计时到期，停止 AlertService 并设置系统闹钟")
+            LogStore.i("倒计时到期，停止 AlertService")
             context.stopService(Intent(context, AlertService::class.java))
-
-            val triggerTime = System.currentTimeMillis() + ALARM_DELAY_MS
-            val alarmIntent = Intent(context, AlarmReceiver::class.java)
-            val pendingIntent = PendingIntent.getBroadcast(
-                context, ALARM_REQUEST_CODE, alarmIntent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-
-            val canSchedule = alarmManager.canScheduleExactAlarms()
-            if (canSchedule) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent,
-                )
-                LogStore.i("系统闹钟已设置（setExactAndAllowWhileIdle），${ALARM_DELAY_MS / 1000}s 后触发")
-            } else {
-                // Fallback: set inexact alarm + coroutine backup
-                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-                LogStore.i("精确闹钟权限未授予，使用 set() + 协程兜底")
-                kotlinx.coroutines.delay(ALARM_DELAY_MS + 500)
-                LogStore.i("协程兜底触发，重新启动 AlertService")
-                context.startForegroundService(Intent(context, AlertService::class.java).apply {
-                    putExtra("msg", "系统闹钟兜底：紧急短信警报")
-                })
-            }
         }
     }
 
-    // Dismiss with alarm cancellation
+    // 用户主动确认：停止 AlertService，调用 onDismiss
+    // 注意：系统时钟 App 中的闹钟由用户在系统时钟 App 手动管理，本 App 不再强制取消
     val dismissWithCancel: () -> Unit = {
-        val alarmIntent = Intent(context, AlarmReceiver::class.java)
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, ALARM_REQUEST_CODE, alarmIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE,
-        )
-        pendingIntent?.let {
-            alarmManager.cancel(it)
-            it.cancel()
-            LogStore.i("系统闹钟已取消")
-        }
+        context.stopService(Intent(context, AlertService::class.java))
+        LogStore.i("用户已确认警报，AlertService 已停止")
         onDismiss()
     }
 
@@ -191,7 +190,7 @@ fun AlarmScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             } else {
                 Text(
-                    text = "系统闹钟已触发",
+                    text = "等待系统闹钟唤醒...",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = AlarmSubtitleRed,

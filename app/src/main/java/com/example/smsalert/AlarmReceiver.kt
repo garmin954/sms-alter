@@ -7,9 +7,10 @@ import android.content.Intent
 class AlarmReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        LogStore.i("AlarmReceiver: 系统闹钟触发，重新启动 AlertService")
+        val msg = intent.getStringExtra("msg") ?: "系统闹钟：紧急短信警报"
+        LogStore.i("AlarmReceiver: 系统闹钟触发，重新启动 AlertService，消息: ${msg.take(30)}")
         val serviceIntent = Intent(context, AlertService::class.java).apply {
-            putExtra("msg", "系统闹钟：紧急短信警报")
+            putExtra("msg", msg)
         }
         context.startForegroundService(serviceIntent)
     }

@@ -1,5 +1,6 @@
 package com.example.smsalert.ui.components
 
+import android.app.AlarmManager
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -62,6 +63,11 @@ fun checkAllPermissions(context: Context): List<PermissionItem> {
 
     // 厂商权限无法通过标准 API 准确检查，始终需用户手动确认
 
+    val hasExactAlarm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.canScheduleExactAlarms()
+    } else true
+
     val grantedStr = context.getString(R.string.perm_granted)
     val notGrantedStr = context.getString(R.string.perm_not_granted)
     val manualStr = context.getString(R.string.perm_manual_setup)
@@ -108,6 +114,12 @@ fun checkAllPermissions(context: Context): List<PermissionItem> {
             status = manualStr,
             granted = false,
             settingType = "bgpopup",
+        ),
+        PermissionItem(
+            title = context.getString(R.string.perm_alarm),
+            status = if (hasExactAlarm) grantedStr else notGrantedStr,
+            granted = hasExactAlarm,
+            settingType = "alarm",
         ),
     )
 }
