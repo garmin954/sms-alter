@@ -30,6 +30,12 @@ jobs:
         run: |
           echo "$KEYSTORE_BASE64" | base64 --decode > app/release.keystore
 
+      - name: Verify keystore
+        run: |
+          keytool -list -keystore app/release.keystore -storepass "${{ secrets.RELEASE_KEYSTORE_PASSWORD }}" 2>&1 || true
+          file app/release.keystore
+          wc -c app/release.keystore
+
       - name: Build signed Release APK
         env:
           RELEASE_KEYSTORE_FILE: release.keystore
