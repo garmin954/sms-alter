@@ -69,4 +69,14 @@
     <string name="lockscreen_notification_hint">请在锁定屏幕上显示本应用通知</string>
     <string name="manual_settings_hint">请手动前往系统设置配置权限</string>
     <string name="open_settings_description">打开设置</string>
+
+    <!-- Update check -->
+    <string name="settings_about_title">关于与更新</string>
+    <string name="settings_version_label">当前版本</string>
+    <string name="settings_check_update_button">检查更新</string>
+    <string name="settings_checking_update">正在检查…</string>
+    <string name="update_available_title">发现新版本</string>
+    <string name="update_download_button">前往下载</string>
+    <string name="update_up_to_date">已是最新版本</string>
+    <string name="update_check_failed">检查更新失败，请检查网络连接</string>
 </resources>

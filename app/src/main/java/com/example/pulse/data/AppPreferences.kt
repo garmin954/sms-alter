@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,6 +21,7 @@ class AppPreferences @Inject constructor(
 ) {
     companion object {
         val KEY_IS_LISTENING = booleanPreferencesKey("is_listening")
+        val KEY_LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         private const val LEGACY_PREFS = "sms_alert_prefs"
         private const val LEGACY_KEY = "is_listening"
     }
@@ -29,9 +31,19 @@ class AppPreferences @Inject constructor(
             .getBoolean(LEGACY_KEY, true)
     }
 
+    val lastUpdateCheck: Flow<Long> = context.dataStore.data.map { prefs ->
+        prefs[KEY_LAST_UPDATE_CHECK] ?: 0L
+    }
+
     suspend fun setIsListening(value: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_IS_LISTENING] = value
+        }
+    }
+
+    suspend fun setLastUpdateCheck(value: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_LAST_UPDATE_CHECK] = value
         }
     }
 }

@@ -35,6 +35,10 @@
     <!-- 悬浮窗/后台弹出界面权限（用于从后台或锁屏拉起警报页面） -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
+    <!-- 网络权限（检查更新） -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
     <!-- Android 11+ 包可见性：用于打开厂商自启动/权限设置页面 -->
     <queries>
         <!-- 小米 / Redmi -->
