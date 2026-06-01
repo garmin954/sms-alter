@@ -3,6 +3,7 @@ package com.example.pulse
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.app.KeyguardManager
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
@@ -99,3 +100,4 @@ class AlarmActivity : ComponentActivity() {
         stopService(Intent(this, AlertService::class.java))
     }
 }
+

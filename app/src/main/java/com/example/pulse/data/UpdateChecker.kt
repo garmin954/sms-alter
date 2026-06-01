@@ -1,12 +1,14 @@
 package com.example.pulse.data
 
+import com.example.pulse.LogStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import java.net.SocketTimeoutException
+import java.util.concurrent.TimeUnit
 
 sealed class UpdateResult {
     data class UpdateAvailable(
@@ -24,27 +26,36 @@ object UpdateChecker {
     private const val GITHUB_API_URL =
         "https://api.github.com/repos/garmin954/sms-alter/releases"
 
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .writeTimeout(10, TimeUnit.SECONDS)
+        .build()
+
     suspend fun check(currentVersionName: String): UpdateResult = withContext(Dispatchers.IO) {
         try {
-            val connection = URL(GITHUB_API_URL).openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
-            connection.setRequestProperty("Accept", "application/vnd.github+json")
-            connection.connectTimeout = 10_000
-            connection.readTimeout = 10_000
+            LogStore.d("检查更新: GET $GITHUB_API_URL")
+            val request = Request.Builder()
+                .url(GITHUB_API_URL)
+                .header("Accept", "application/vnd.github+json")
+                .header("User-Agent", "Pulse-Android-App")
+                .build()
 
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                return@withContext UpdateResult.Error("检查失败（HTTP $responseCode）")
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                val errorMsg = when {
+                    response.code == 403 && body.contains("rate limit", ignoreCase = true) ->
+                        "GitHub API 限流，请稍后再试"
+                    response.code == 404 -> "仓库不可访问"
+                    else -> "检查失败（HTTP ${response.code}）"
+                }
+                return@withContext UpdateResult.Error(errorMsg)
             }
 
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
             val releases = JSONArray(body)
-            if (releases.length() == 0) {
-                return@withContext UpdateResult.UpToDate
-            }
-
-            // Find the first non-draft release
-            var latestRelease: JSONObject? = null
+            var latestRelease: org.json.JSONObject? = null
             for (i in 0 until releases.length()) {
                 val release = releases.getJSONObject(i)
                 if (!release.optBoolean("draft", false)) {
@@ -58,7 +69,7 @@ object UpdateChecker {
 
             val tagName = latestRelease.getString("tag_name")
             val htmlUrl = latestRelease.getString("html_url")
-            val changelog = latestRelease.optString("body", "")
+            val changelog = latestRelease.optString("body", "暂无更新说明").take(1000)
 
             val latestVersion = tagName.removePrefix("v")
 
@@ -71,8 +82,11 @@ object UpdateChecker {
             } else {
                 UpdateResult.UpToDate
             }
+        } catch (e: SocketTimeoutException) {
+            UpdateResult.Error("连接超时，请检查网络")
         } catch (e: IOException) {
-            UpdateResult.Error(e.message ?: "Network error")
+            LogStore.e("检查更新异常: ${e.message}")
+            UpdateResult.Error(e.message?.take(100) ?: "网络错误")
         }
     }
 

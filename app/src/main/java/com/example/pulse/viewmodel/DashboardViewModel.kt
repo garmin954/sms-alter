@@ -27,6 +27,7 @@ import javax.inject.Inject
 class DashboardViewModel @Inject constructor(
     application: Application,
     private val appPreferences: AppPreferences,
+    private val keywordStore: KeywordStore,
 ) : AndroidViewModel(application) {
 
     val isListening: StateFlow<Boolean> = appPreferences.isListening
@@ -47,7 +48,7 @@ class DashboardViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
 
-    private val _keywords = MutableStateFlow(KeywordStore.getKeywords(application))
+    private val _keywords = MutableStateFlow(keywordStore.getKeywords())
     val keywords: StateFlow<List<String>> = _keywords.asStateFlow()
 
     private val _showPermissionDialog = MutableStateFlow(false)
@@ -79,15 +80,17 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun addKeyword(keyword: String) {
-        val context = getApplication<Application>()
-        KeywordStore.addKeyword(context, keyword)
-        _keywords.value = KeywordStore.getKeywords(context)
+        viewModelScope.launch {
+            keywordStore.addKeyword(keyword)
+            _keywords.value = keywordStore.getKeywords()
+        }
     }
 
     fun removeKeyword(keyword: String) {
-        val context = getApplication<Application>()
-        KeywordStore.removeKeyword(context, keyword)
-        _keywords.value = KeywordStore.getKeywords(context)
+        viewModelScope.launch {
+            keywordStore.removeKeyword(keyword)
+            _keywords.value = keywordStore.getKeywords()
+        }
     }
 
     fun testAlarm() {
@@ -102,3 +105,4 @@ class DashboardViewModel @Inject constructor(
         }
     }
 }
+

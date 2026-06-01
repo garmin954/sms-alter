@@ -38,7 +38,7 @@ class SmsReceiver : BroadcastReceiver() {
                 val body = sms.displayMessageBody ?: sms.messageBody ?: ""
                 LogStore.d("短信内容: ${body.take(40)}...")
 
-                if (!KeywordStore.match(context, body)) {
+                if (!(KeywordStore.getInstance()?.match(body) ?: false)) {
                     LogStore.d("未匹配任何关键词，跳过")
                     continue
                 }

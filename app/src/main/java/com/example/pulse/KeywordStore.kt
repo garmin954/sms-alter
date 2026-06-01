@@ -1,72 +1,124 @@
 package com.example.pulse
 
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.json.JSONArray
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object KeywordStore {
+private val Context.keywordDataStore: DataStore<Preferences> by preferencesDataStore(name = "keyword_prefs")
 
-    private const val PREFS_NAME = "sms_alert_prefs"
-    private const val KEY_KEYWORDS = "keywords"
-    private val DEFAULT_KEYWORDS = listOf("ALERT", "紧急", "交警", "服务器宕机")
-    private const val MAX_KEYWORDS = 50
-    private const val MAX_KEYWORD_LENGTH = 50
+@Singleton
+class KeywordStore @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
+    companion object {
+        @Volatile
+        private var instance: KeywordStore? = null
 
-    fun getKeywords(context: Context): List<String> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val savedStr = prefs.getString(KEY_KEYWORDS, null) ?: return DEFAULT_KEYWORDS
-        if (savedStr.isEmpty()) return emptyList()
+        private const val MAX_KEYWORDS = 50
+        private const val MAX_KEYWORD_LENGTH = 50
+        private val DEFAULT_KEYWORDS = listOf("ALERT", "紧急", "交警", "服务器宕机")
+        private const val LEGACY_PREFS_NAME = "sms_alert_prefs"
+        private const val LEGACY_KEY_KEYWORDS = "keywords"
+        private val KEY_KEYWORDS_JSON = stringPreferencesKey("keywords_json")
 
-        // Try JSON first (current format)
-        try {
-            val arr = JSONArray(savedStr)
-            val result = mutableListOf<String>()
-            for (i in 0 until arr.length()) {
-                result.add(arr.getString(i))
+        /** SmsReceiver 等非 Hilt 组件通过此方法获取单例 */
+        fun getInstance(): KeywordStore? = instance
+        internal fun setInstance(store: KeywordStore) { instance = store }
+    }
+
+    @Volatile
+    private var cachedKeywords: List<String> = DEFAULT_KEYWORDS
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    init {
+        setInstance(this)
+        // 同步加载旧版 SharedPreferences（快速启动缓存）
+        cachedKeywords = loadFromLegacySync()
+        // 异步迁移到 DataStore 并更新缓存
+        scope.launch { loadFromDataStore() }
+    }
+
+    private fun loadFromLegacySync(): List<String> {
+        val prefs = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+        val savedStr = prefs.getString(LEGACY_KEY_KEYWORDS, null) ?: return DEFAULT_KEYWORDS
+        return parseKeywords(savedStr)
+    }
+
+    private suspend fun loadFromDataStore() {
+        val json = context.keywordDataStore.data.first()[KEY_KEYWORDS_JSON]
+        if (json != null) {
+            cachedKeywords = parseJsonKeywords(json) ?: return
+        } else {
+            // 首次迁移：从 SharedPreferences → DataStore
+            val legacy = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(LEGACY_KEY_KEYWORDS, null)
+            if (legacy != null) {
+                context.keywordDataStore.edit { prefs ->
+                    prefs[KEY_KEYWORDS_JSON] = JSONArray(cachedKeywords).toString()
+                }
             }
-            return result
-        } catch (_: Exception) {
-            // Migration: old ##-delimited format
-            val migrated = savedStr.split("##").filter { it.isNotEmpty() }
-            if (migrated.isNotEmpty()) {
-                saveKeywordsInternal(prefs, migrated)
-            }
-            return migrated
         }
     }
 
-    fun addKeyword(context: Context, keyword: String): Boolean {
+    /** 同步读取（供 SmsReceiver 使用） */
+    fun getKeywords(): List<String> = cachedKeywords
+
+    /** 同步匹配（基于内存缓存） */
+    fun match(text: String): Boolean =
+        cachedKeywords.any { text.contains(it, ignoreCase = true) }
+
+    /** 异步添加 */
+    suspend fun addKeyword(keyword: String): Boolean {
         val trimmed = keyword.trim()
         if (trimmed.isEmpty() || trimmed.length > MAX_KEYWORD_LENGTH) return false
-        val current = getKeywords(context).toMutableList()
-        if (current.size >= MAX_KEYWORDS) return false
-        if (current.contains(trimmed)) return false
+        val current = cachedKeywords.toMutableList()
+        if (current.size >= MAX_KEYWORDS || current.contains(trimmed)) return false
         current.add(trimmed)
-        saveKeywords(context, current)
+        persistAndCache(current)
         return true
     }
 
-    fun removeKeyword(context: Context, keyword: String): Boolean {
-        val current = getKeywords(context).toMutableList()
+    /** 异步移除 */
+    suspend fun removeKeyword(keyword: String): Boolean {
+        val current = cachedKeywords.toMutableList()
         if (!current.contains(keyword)) return false
         current.remove(keyword)
-        saveKeywords(context, current)
+        persistAndCache(current)
         return true
     }
 
-    private fun saveKeywords(context: Context, list: List<String>) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        saveKeywordsInternal(prefs, list)
-    }
-
-    private fun saveKeywordsInternal(prefs: android.content.SharedPreferences, list: List<String>) {
-        val json = JSONArray(list).toString()
-        prefs.edit().putString(KEY_KEYWORDS, json).apply()
-    }
-
-    fun match(context: Context, text: String): Boolean {
-        val list = getKeywords(context)
-        return list.any {
-            text.contains(it, ignoreCase = true)
+    private suspend fun persistAndCache(list: List<String>) {
+        cachedKeywords = list.toList()
+        context.keywordDataStore.edit { prefs ->
+            prefs[KEY_KEYWORDS_JSON] = JSONArray(list).toString()
         }
     }
+
+    private fun parseKeywords(input: String): List<String> {
+        try {
+            val arr = JSONArray(input)
+            val result = mutableListOf<String>()
+            for (i in 0 until arr.length()) result.add(arr.getString(i))
+            return result
+        } catch (_: Exception) {
+            return input.split("##").filter { it.isNotEmpty() }
+        }
+    }
+
+    private fun parseJsonKeywords(json: String): List<String>? = try {
+        val arr = JSONArray(json)
+        (0 until arr.length()).map { arr.getString(it) }
+    } catch (_: Exception) { null }
 }

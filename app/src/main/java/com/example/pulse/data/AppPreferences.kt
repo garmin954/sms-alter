@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,8 +23,11 @@ class AppPreferences @Inject constructor(
     companion object {
         val KEY_IS_LISTENING = booleanPreferencesKey("is_listening")
         val KEY_LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
+        val KEY_MONITOR_START_TIME = longPreferencesKey("monitor_start_time")
         private const val LEGACY_PREFS = "sms_alert_prefs"
         private const val LEGACY_KEY = "is_listening"
+        private const val MONITOR_LEGACY_PREFS = "monitor_prefs"
+        private const val MONITOR_LEGACY_KEY = "start_time_elapsed"
     }
 
     val isListening: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -33,6 +37,25 @@ class AppPreferences @Inject constructor(
 
     val lastUpdateCheck: Flow<Long> = context.dataStore.data.map { prefs ->
         prefs[KEY_LAST_UPDATE_CHECK] ?: 0L
+    }
+
+    /** 一次性读取 monitor 启动时间（恢复进程后使用） */
+    suspend fun getMonitorStartTime(): Long {
+        return context.dataStore.data.first()[KEY_MONITOR_START_TIME]
+            ?: context.getSharedPreferences(MONITOR_LEGACY_PREFS, Context.MODE_PRIVATE)
+                .getLong(MONITOR_LEGACY_KEY, 0L)
+    }
+
+    suspend fun saveMonitorStartTime(value: Long) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_MONITOR_START_TIME] = value
+        }
+    }
+
+    suspend fun clearMonitorStartTime() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(KEY_MONITOR_START_TIME)
+        }
     }
 
     suspend fun setIsListening(value: Boolean) {
@@ -47,3 +70,5 @@ class AppPreferences @Inject constructor(
         }
     }
 }
+
+

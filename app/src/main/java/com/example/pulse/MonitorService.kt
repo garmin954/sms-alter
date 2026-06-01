@@ -7,50 +7,38 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.os.SystemClock
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import com.example.pulse.data.AppPreferences
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MonitorService : Service() {
 
     private lateinit var pendingIntent: PendingIntent
 
+    @Inject lateinit var appPreferences: AppPreferences
+    private val serviceScope = CoroutineScope(Dispatchers.IO)
+
     companion object {
         const val CHANNEL_ID = "monitor_channel"
         const val NOTIFICATION_ID = 100
-        private const val PREFS_NAME = "monitor_prefs"
-        private const val KEY_START_TIME = "start_time_elapsed"
 
         @Volatile
         private var _isRunning = false
         @Volatile
-        private var _startTime = 0L
+        internal var _startTime = 0L
 
         fun isRunning(): Boolean = _isRunning
         fun getElapsedMs(): Long =
             if (_isRunning) SystemClock.elapsedRealtime() - _startTime else 0L
-
-        private fun restoreStartTime(context: Context): Long {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val saved = prefs.getLong(KEY_START_TIME, 0L)
-            // 如果保存的值比当前 elapsedRealtime 还大，说明设备重启过，抛弃旧值
-            return if (saved > 0L && saved <= SystemClock.elapsedRealtime()) saved else 0L
-        }
-
-        private fun persistStartTime(context: Context, time: Long) {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().putLong(KEY_START_TIME, time).apply()
-        }
-
-        private fun clearPersistedStartTime(context: Context) {
-            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                .edit().remove(KEY_START_TIME).apply()
-        }
 
         fun start(context: Context) {
             val intent = Intent(context, MonitorService::class.java)
@@ -68,7 +56,6 @@ class MonitorService : Service() {
         }
 
         fun stop(context: Context) {
-            clearPersistedStartTime(context)
             context.stopService(Intent(context, MonitorService::class.java))
         }
     }
@@ -76,10 +63,18 @@ class MonitorService : Service() {
     override fun onCreate() {
         super.onCreate()
         _isRunning = true
-        val restored = restoreStartTime(this)
-        _startTime = if (restored > 0L) restored else SystemClock.elapsedRealtime()
-        persistStartTime(this, _startTime)
-        LogStore.i("MonitorService onCreate, _startTime=$_startTime (restored=${restored > 0L})")
+        // 从 DataStore 恢复计时（兼容旧版 SharedPreferences 遗留数据）
+        serviceScope.launch {
+            val restored = appPreferences.getMonitorStartTime()
+            val valid = if (restored > 0L && restored <= SystemClock.elapsedRealtime()) restored else 0L
+            _startTime = if (valid > 0L) valid else SystemClock.elapsedRealtime()
+            if (valid > 0L) {
+                LogStore.i("MonitorService 恢复计时: $_startTime")
+            } else {
+                LogStore.i("MonitorService 新建计时: $_startTime")
+            }
+            appPreferences.saveMonitorStartTime(_startTime)
+        }
         createChannel()
     }
 
@@ -98,7 +93,7 @@ class MonitorService : Service() {
             e.printStackTrace()
         }
 
-        LogStore.i("MonitorService 启动完成，关键词: ${KeywordStore.getKeywords(this).joinToString()}")
+        LogStore.i("MonitorService 启动完成，关键词: ${KeywordStore.getInstance()?.getKeywords()?.joinToString() ?: ""}")
 
         return START_STICKY
     }
@@ -106,11 +101,16 @@ class MonitorService : Service() {
     override fun onDestroy() {
         _isRunning = false
         _startTime = 0L
+        serviceScope.launch {
+            appPreferences.clearMonitorStartTime()
+        }
+        serviceScope.cancel()
         LogStore.i("MonitorService onDestroy")
         super.onDestroy()
     }
 
     private fun buildNotification(): android.app.Notification {
+        val whenTime = System.currentTimeMillis() - getElapsedMs()
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.monitor_notification_title))
             .setContentText(getString(R.string.monitor_notification_text))
@@ -119,7 +119,7 @@ class MonitorService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
             .setUsesChronometer(true)
-            .setWhen(_startTime)
+            .setWhen(whenTime)
             .build()
     }
 
