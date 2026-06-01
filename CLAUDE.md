@@ -179,9 +179,10 @@ SettingsViewModel.checkForUpdates()
 - 架构：Hilt `@Singleton`，通过 `companion object` 维护实例引用供非 Hilt 组件（如 SmsReceiver）访问。
 - 兼容旧版 `##` 分隔符格式，读取时自动迁移。
 - 内存缓存：`@Volatile cachedKeywords` 实现同步读取，`match()` 和 `getKeywords()` 无需挂起。
+- **初始化**：在 `init` 中使用 `runBlocking` 同步加载 DataStore（优先）或旧 SharedPreferences（首次迁移），确保 `SmsAlertApp.onCreate()` 调用 `getKeywords()` 时完整数据已就绪，消除 SmsReceiver 读到过期缓存的竞态条件。
 - 旧版兼容：首次启动时自动从旧 SharedPreferences `sms_alert_prefs.keywords` 迁移到 DataStore。
 - 限制：最多 50 条，单条最长 50 字符。
-- 默认关键词：`["ALERT", "紧急", "交警", "服务器宕机"]`。
+- 默认关键词：空列表（首次安装无预设关键词）。
 
 ### 4.6 LogStore
 
@@ -278,9 +279,9 @@ SettingsViewModel.checkForUpdates()
 
 ## 7. 常见修改场景
 
-### 7.1 添加新关键词默认项
+### 7.1 修改关键词默认项
 
-修改 `KeywordStore.kt` 中 `DEFAULT_KEYWORDS` 列表。
+修改 `KeywordStore.kt` 中 `DEFAULT_KEYWORDS` 列表（当前为空，可添加首次安装时的预设关键词）。
 
 ### 7.2 调整报警倒计时或兜底闹钟延迟
 
@@ -319,5 +320,5 @@ SettingsViewModel.checkForUpdates()
 - **LogActivity 为旧版 XML 实现**：新功能优先使用 Compose（HistoryScreen），LogActivity 保留用于调试兼容。
 - **ProGuard**：Release 构建启用 R8 + `shrinkResources`，Room 实体和 Hilt 模块已受注解保护，无需额外规则。
 - **AppPreferences 兼容迁移**：`is_listening` 读取时自动从旧 SharedPreferences (`sms_alert_prefs`) 迁移，旧版数据不会丢失。
-- **KeywordStore 初始化时序**：`SmsAlertApp.onCreate()` 中通过 `@Inject` 强制初始化 `KeywordStore`，确保 SmsReceiver 在收到 SMS 广播时 `getInstance()` 返回有效实例。
+- **KeywordStore 初始化时序**：`init` 中使用 `runBlocking` 同步加载 DataStore，确保 `SmsAlertApp.onCreate()` 调用 `getKeywords()` 时完整关键词列表已就绪，消除此前同步读旧 SharedPreferences + 异步读 DataStore 的竞态条件。
 
