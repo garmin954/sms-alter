@@ -95,6 +95,9 @@ class MonitorService : Service() {
 
         LogStore.i("MonitorService 启动完成，关键词: ${KeywordStore.getInstance()?.getKeywords()?.joinToString() ?: ""}")
 
+        // 调度保活闹钟
+        KeepAliveScheduler.schedule(this)
+
         return START_STICKY
     }
 
@@ -105,8 +108,15 @@ class MonitorService : Service() {
             appPreferences.clearMonitorStartTime()
         }
         serviceScope.cancel()
+        KeepAliveScheduler.cancel(this)
         LogStore.i("MonitorService onDestroy")
         super.onDestroy()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        LogStore.w("══════ MonitorService onTaskRemoved — 用户从最近任务划掉 App ══════")
+        // stopWithTask="false" 应阻止服务被杀，但某些 ROM 仍会触发
     }
 
     private fun buildNotification(): android.app.Notification {

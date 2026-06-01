@@ -7,11 +7,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,7 +25,7 @@ class KeywordStore @Inject constructor(
 
         private const val MAX_KEYWORDS = 50
         private const val MAX_KEYWORD_LENGTH = 50
-        private val DEFAULT_KEYWORDS = listOf("ALERT", "紧急", "交警", "服务器宕机")
+        private val DEFAULT_KEYWORDS = listOf<String>()
         private const val LEGACY_PREFS_NAME = "sms_alert_prefs"
         private const val LEGACY_KEY_KEYWORDS = "keywords"
         private val KEY_KEYWORDS_JSON = stringPreferencesKey("keywords_json")
@@ -40,36 +37,29 @@ class KeywordStore @Inject constructor(
 
     @Volatile
     private var cachedKeywords: List<String> = DEFAULT_KEYWORDS
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         setInstance(this)
-        // 同步加载旧版 SharedPreferences（快速启动缓存）
-        cachedKeywords = loadFromLegacySync()
-        // 异步迁移到 DataStore 并更新缓存
-        scope.launch { loadFromDataStore() }
+        cachedKeywords = runBlocking { loadInitial() }
     }
 
-    private fun loadFromLegacySync(): List<String> {
-        val prefs = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
-        val savedStr = prefs.getString(LEGACY_KEY_KEYWORDS, null) ?: return DEFAULT_KEYWORDS
-        return parseKeywords(savedStr)
-    }
-
-    private suspend fun loadFromDataStore() {
+    private suspend fun loadInitial(): List<String> {
+        // 优先从 DataStore 读取（包含用户自定义关键词）
         val json = context.keywordDataStore.data.first()[KEY_KEYWORDS_JSON]
         if (json != null) {
-            cachedKeywords = parseJsonKeywords(json) ?: return
-        } else {
-            // 首次迁移：从 SharedPreferences → DataStore
-            val legacy = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
-                .getString(LEGACY_KEY_KEYWORDS, null)
-            if (legacy != null) {
-                context.keywordDataStore.edit { prefs ->
-                    prefs[KEY_KEYWORDS_JSON] = JSONArray(cachedKeywords).toString()
-                }
-            }
+            return parseJsonKeywords(json) ?: DEFAULT_KEYWORDS
         }
+        // 首次迁移：从旧 SharedPreferences → DataStore
+        val legacy = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(LEGACY_KEY_KEYWORDS, null)
+        if (legacy != null) {
+            val keywords = parseKeywords(legacy)
+            context.keywordDataStore.edit { prefs ->
+                prefs[KEY_KEYWORDS_JSON] = JSONArray(keywords).toString()
+            }
+            return keywords
+        }
+        return DEFAULT_KEYWORDS
     }
 
     /** 同步读取（供 SmsReceiver 使用） */

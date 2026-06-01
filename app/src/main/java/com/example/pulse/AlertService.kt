@@ -36,11 +36,16 @@ class AlertService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        LogStore.i("AlertService onCreate")
+        LogStore.i("══════════ AlertService 创建 ══════════")
         createChannel()
+        LogStore.i("AlertService onCreate 完成")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val fromAlarmClock = intent?.getBooleanExtra("from_alarm_clock", false) ?: false
+        LogStore.i("══════════ AlertService onStartCommand ══════════")
+        LogStore.i("from_alarm_clock=$fromAlarmClock, isActive=$isActive")
+
         // Handle dismiss action from notification button
         if (ACTION_DISMISS == intent?.action) {
             LogStore.i("通知栏确认按钮：关闭警报")
@@ -54,22 +59,24 @@ class AlertService : Service() {
 
         val msg = intent?.getStringExtra("msg") ?: ""
         currentMessage = msg
-        LogStore.i("AlertService onStartCommand: ${msg.take(30)}...")
+        LogStore.i("报警消息: ${msg.take(50)}")
 
-        // Persist alert to Room
+        // 步骤 5：保存记录到 Room
         serviceScope.launch {
             try {
                 val source = if (msg.contains("模拟报警测试")) "test" else "sms"
                 alertDao.insert(AlertRecord(message = msg, source = source))
-                LogStore.d("警报记录已保存到数据库")
+                LogStore.d("【步骤5✓】警报记录已保存到数据库")
             } catch (e: Exception) {
+                LogStore.e("【步骤5失败】保存警报记录失败: ${e.javaClass.simpleName}: ${e.message}")
                 Log.e("AlertService", "保存警报记录失败", e)
             }
         }
 
-        acquireWakeLock()
+        // 步骤 6：获取 WakeLock
+        val wakeLockType = acquireWakeLock()
+        LogStore.i("【步骤6✓】WakeLock 已获取，类型: $wakeLockType")
 
-        val fromAlarmClock = intent?.getBooleanExtra("from_alarm_clock", false) ?: false
         val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("msg", msg)
             putExtra("from_alarm_clock", fromAlarmClock)
@@ -89,6 +96,7 @@ class AlertService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        // 步骤 7：发布前台通知（含 FullScreenIntent）
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.alert_notification_title))
             .setContentText(msg)
@@ -105,23 +113,40 @@ class AlertService : Service() {
             )
             .build()
 
-        startForeground(1, notification)
+        try {
+            startForeground(1, notification)
+            LogStore.i("【步骤7✓】前台通知已发布（含 FullScreenIntent）")
+        } catch (e: Exception) {
+            LogStore.e("【步骤7失败】startForeground 异常: ${e.javaClass.simpleName}: ${e.message}")
+            e.printStackTrace()
+        }
 
         if (!isActive) {
             isActive = true
             LogStore.i("触发声音+振动报警（循环）")
             triggerAlarm()
+
+            // 步骤 8：尝试显式启动 AlarmActivity
+            LogStore.i("【步骤8】尝试显式启动 AlarmActivity...")
             try {
                 startActivity(alarmIntent)
-                LogStore.i("AlarmActivity 已启动")
+                LogStore.i("【步骤8✓】AlarmActivity 显式启动成功")
+            } catch (e: SecurityException) {
+                LogStore.e("【步骤8失败】SecurityException — 后台启动 Activity 被系统拦截")
+                LogStore.e("  异常详情: ${e.javaClass.name}: ${e.message}")
+                LogStore.e("  这通常是因为 Android 10+ 后台启动限制或缺少 SYSTEM_ALERT_WINDOW 权限")
+                LogStore.e("  后续依赖通知栏 FullScreenIntent 拉起界面（需系统支持）")
+                e.printStackTrace()
             } catch (e: Exception) {
-                LogStore.e("启动 AlarmActivity 失败: ${e.message}")
+                LogStore.e("【步骤8失败】${e.javaClass.simpleName}: ${e.message}")
+                LogStore.e("  后续依赖通知栏 FullScreenIntent 拉起界面")
                 e.printStackTrace()
             }
         } else {
             LogStore.d("AlertService 已激活，更新通知内容")
         }
 
+        LogStore.i("══════════ AlertService 启动完成 ══════════")
         return START_STICKY
     }
 
@@ -163,19 +188,22 @@ class AlertService : Service() {
         LogStore.d("铃声已播放（循环模式）")
     }
 
-    private fun acquireWakeLock() {
-        if (wakeLock?.isHeld == true) return
+    private fun acquireWakeLock(): String {
+        if (wakeLock?.isHeld == true) return "已持有(复用)"
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK or
+        val flags = PowerManager.PARTIAL_WAKE_LOCK or
             PowerManager.ACQUIRE_CAUSES_WAKEUP or
-            PowerManager.ON_AFTER_RELEASE,
-            "smsalert:alert"
-        ).apply {
+            PowerManager.ON_AFTER_RELEASE
+        val flagNames = mutableListOf<String>()
+        if (flags and PowerManager.PARTIAL_WAKE_LOCK != 0) flagNames.add("PARTIAL")
+        if (flags and PowerManager.ACQUIRE_CAUSES_WAKEUP != 0) flagNames.add("CAUSES_WAKEUP")
+        if (flags and PowerManager.ON_AFTER_RELEASE != 0) flagNames.add("ON_AFTER_RELEASE")
+        wakeLock = pm.newWakeLock(flags, "smsalert:alert").apply {
             setReferenceCounted(false)
             acquire(60_000)
         }
-        LogStore.d("WakeLock 已获取（60秒超时）")
+        LogStore.d("WakeLock 已获取 — 标志: ${flagNames.joinToString("|")}（60秒超时）")
+        return flagNames.joinToString("|")
     }
 
     private fun releaseWakeLock() {

@@ -56,9 +56,26 @@ class MainActivity : ComponentActivity() {
             permissionRefreshKey++
         }
 
+    override fun onStart() {
+        super.onStart()
+        LogStore.i("══════ MainActivity onStart — 用户返回 App ══════")
+        LogStore.i("应用来到前台: MonitorService.isRunning=${MonitorService.isRunning()}, 已运行${MonitorService.getElapsedMs() / 1000}s")
+    }
+
     override fun onResume() {
         super.onResume()
         permissionRefreshKey++
+    }
+
+    override fun onStop() {
+        super.onStop()
+        LogStore.i("══════ MainActivity onStop — 用户切出 App ══════")
+        LogStore.i("应用进入后台: MonitorService.isRunning=${MonitorService.isRunning()}, 进程可能被系统回收")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        LogStore.w("══════ MainActivity onDestroy — Activity 销毁 ══════")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
