@@ -3,9 +3,7 @@
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
-import android.app.AlarmManager
-import android.app.PendingIntent
-import android.os.Build
+
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -45,7 +43,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pulse.AlertService
-import com.example.pulse.AlarmReceiver
 import com.example.pulse.LogStore
 import com.example.pulse.R
 import com.example.pulse.ui.theme.*
@@ -58,9 +55,6 @@ private const val COUNTDOWN_SECONDS = 20
 
 /** 倒计时归零后，系统闹钟延迟秒数（从归零时刻起算）*/
 private const val FALLBACK_DELAY_SECONDS = 15L
-
-/** AlarmReceiver 兜底闹钟的 PendingIntent request code */
-private const val FALLBACK_ALARM_REQUEST_CODE = 9002
 
 /**
  * 通过 ACTION_SET_ALARM 在系统时钟 App 创建可见闹钟（用户可在时钟 App 中看到）。
@@ -113,46 +107,6 @@ private fun tryDismissSystemAlarm(context: Context, message: String) {
     }
 }
 
-/**
- * 通过 AlarmManager.setExact(RTC_WAKEUP) 设置精确兜底闹钟。
- * 15s 后触发 AlarmReceiver → 重启 AlertService 重新拉起报警界面。
- * 相比 ACTION_SET_ALARM 仅分钟级精度，setExact 提供毫秒级精确唤醒。
- */
-private fun setExactFallbackAlarm(context: Context, message: String) {
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-    val intent = Intent(context, AlarmReceiver::class.java).apply {
-        putExtra("msg", message)
-    }
-    val pendingIntent = PendingIntent.getBroadcast(
-        context, FALLBACK_ALARM_REQUEST_CODE, intent,
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-    )
-    val triggerTime = System.currentTimeMillis() + FALLBACK_DELAY_SECONDS * 1000L
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
-        alarmManager.setWindow(AlarmManager.RTC_WAKEUP, triggerTime, 30_000L, pendingIntent)
-        LogStore.w("兜底闹钟已设置（setWindow，无精确闹钟权限）")
-    } else {
-        alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent)
-        LogStore.i("兜底闹钟已设置（setExact，${FALLBACK_DELAY_SECONDS}秒后触发）")
-    }
-}
-
-/**
- * 取消 AlarmManager 兜底闹钟。
- * 用户确认报警后调用，防止 15s 后 AlarmReceiver 误触发。
- */
-private fun cancelExactFallbackAlarm(context: Context) {
-    val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-    val intent = Intent(context, AlarmReceiver::class.java)
-    val pendingIntent = PendingIntent.getBroadcast(
-        context, FALLBACK_ALARM_REQUEST_CODE, intent,
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-    )
-    alarmManager.cancel(pendingIntent)
-    pendingIntent.cancel()
-    LogStore.i("兜底闹钟已取消")
-}
-
 
 @Composable
 fun AlarmScreen(
@@ -174,7 +128,6 @@ fun AlarmScreen(
             remainingSeconds--
         }
         // 倒计时归零：创建系统时钟可见闹钟，停止 AlertService
-        setExactFallbackAlarm(context, message)
         setSystemAlarmViaIntent(context, message)
         LogStore.i("倒计时到期，停止 AlertService，系统闹钟已设置")
         context.stopService(Intent(context, AlertService::class.java))
@@ -182,7 +135,6 @@ fun AlarmScreen(
 
     // 用户主动确认：尝试撤销系统时钟闹钟，停止 AlertService
     val dismissWithCancel: () -> Unit = {
-        cancelExactFallbackAlarm(context)
         tryDismissSystemAlarm(context, message)
         context.stopService(Intent(context, AlertService::class.java))
         LogStore.i("用户已确认警报，AlertService 已停止")
