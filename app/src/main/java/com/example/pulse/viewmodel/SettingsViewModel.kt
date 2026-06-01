@@ -1,8 +1,9 @@
-package com.example.pulse.viewmodel
+﻿package com.example.pulse.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.pulse.data.AppPreferences
 import com.example.pulse.data.UpdateChecker
 import com.example.pulse.data.UpdateResult
 import com.example.pulse.ui.components.PermissionItem
@@ -11,6 +12,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -25,6 +28,7 @@ sealed class UpdateUiState {
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     application: Application,
+    private val appPreferences: AppPreferences,
 ) : AndroidViewModel(application) {
 
     private val _permissions = MutableStateFlow(checkAllPermissions(application))
@@ -32,6 +36,13 @@ class SettingsViewModel @Inject constructor(
 
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
+
+    val themeMode = appPreferences.themeMode
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    fun setThemeMode(mode: Int) {
+        viewModelScope.launch { appPreferences.setThemeMode(mode) }
+    }
 
     val currentVersion: String = try {
         val info = application.packageManager.getPackageInfo(application.packageName, 0)

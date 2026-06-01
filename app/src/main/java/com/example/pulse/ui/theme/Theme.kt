@@ -84,11 +84,18 @@ val DarkAppColors = AppColors(
 
 val LocalAppColors = staticCompositionLocalOf { LightAppColors }
 
+/** 0 = 跟随系统, 1 = 浅色, 2 = 深色 */
 @Composable
 fun SmsAlertTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeMode: Int = 0,
     content: @Composable () -> Unit,
 ) {
+    val systemDark = isSystemInDarkTheme()
+    val darkTheme = when (themeMode) {
+        1 -> false
+        2 -> true
+        else -> systemDark
+    }
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val appColors = if (darkTheme) DarkAppColors else LightAppColors
 

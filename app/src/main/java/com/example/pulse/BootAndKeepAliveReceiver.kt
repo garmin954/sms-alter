@@ -1,4 +1,4 @@
-package com.example.pulse
+﻿package com.example.pulse
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -29,11 +29,11 @@ class BootAndKeepAliveReceiver : BroadcastReceiver() {
         if (!MonitorService.isRunning()) {
             LogStore.w("MonitorService 未运行，尝试重启...")
             MonitorService.start(context)
+            // onStartCommand() 中会自动调度下一次保活，此处不再重复调度
         } else {
             LogStore.i("MonitorService 运行中，无需重启")
+            // MonitorService 已在运行，不会走 onStartCommand，必须在此调度
+            KeepAliveScheduler.schedule(context)
         }
-
-        // 重新调度下一次保活（BOOT_COMPLETED 也需要启动调度）
-        KeepAliveScheduler.schedule(context)
     }
 }

@@ -1,4 +1,4 @@
-package com.example.pulse
+﻿package com.example.pulse
 
 import android.Manifest
 import android.content.ComponentName
@@ -16,11 +16,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.WindowCompat
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
@@ -90,7 +92,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            SmsAlertTheme {
+            val themeMode by appPreferences.themeMode.collectAsState(initial = 0)
+            SmsAlertTheme(themeMode = themeMode) {
                 MainNavGraph(
                     onRequestPermissions = { requestRuntimePermissions() },
                     onOpenSetting = { type -> openPermissionSetting(type) },

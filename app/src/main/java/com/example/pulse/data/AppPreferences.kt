@@ -1,9 +1,10 @@
-package com.example.pulse.data
+﻿package com.example.pulse.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
@@ -21,6 +22,7 @@ class AppPreferences @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     companion object {
+        val KEY_THEME_MODE = intPreferencesKey("theme_mode")
         val KEY_IS_LISTENING = booleanPreferencesKey("is_listening")
         val KEY_LAST_UPDATE_CHECK = longPreferencesKey("last_update_check")
         val KEY_MONITOR_START_TIME = longPreferencesKey("monitor_start_time")
@@ -33,6 +35,10 @@ class AppPreferences @Inject constructor(
     val isListening: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_IS_LISTENING] ?: context.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
             .getBoolean(LEGACY_KEY, true)
+    }
+
+    val themeMode: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_THEME_MODE] ?: 0
     }
 
     val lastUpdateCheck: Flow<Long> = context.dataStore.data.map { prefs ->
@@ -55,6 +61,12 @@ class AppPreferences @Inject constructor(
     suspend fun clearMonitorStartTime() {
         context.dataStore.edit { prefs ->
             prefs.remove(KEY_MONITOR_START_TIME)
+        }
+    }
+
+    suspend fun setThemeMode(mode: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[KEY_THEME_MODE] = mode
         }
     }
 

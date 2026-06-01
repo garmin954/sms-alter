@@ -1,4 +1,4 @@
-package com.example.pulse
+﻿package com.example.pulse
 
 import android.content.BroadcastReceiver
 import android.content.ComponentName
@@ -10,14 +10,26 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Telephony
 import org.json.JSONArray
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+
+
+
+private val KEY_DEDUP_BODY = stringPreferencesKey("last_sms_body")
+private val KEY_DEDUP_TIME = longPreferencesKey("last_sms_time")
+
+private val Context.dedupDataStore: DataStore<Preferences> by preferencesDataStore(name = "sms_dedup_prefs")
 
 class SmsReceiver : BroadcastReceiver() {
 
     companion object {
         private const val PREFS_NAME = "sms_alert_prefs"
-        private const val KEY_LAST_BODY = "last_sms_body"
-        private const val KEY_LAST_TIME = "last_sms_time"
-        private const val KEY_LAST_ID = "last_sms_id"
         private const val KEY_KEYWORDS = "keywords"
         private val DEFAULT_KEYWORDS = listOf("ALERT", "紧急", "交警", "服务器宕机")
 
@@ -46,7 +58,23 @@ class SmsReceiver : BroadcastReceiver() {
         /** 同步关键词匹配（不依赖 KeywordStore） */
         internal fun matchKeywords(body: String, keywords: List<String>): Boolean =
             keywords.any { body.contains(it, ignoreCase = true) }
+
+        /** 从 DataStore 同步读取去重数据（广播接收器需要同步调用） */
+        internal fun loadDedupData(context: Context): Pair<String, Long> = runBlocking {
+            val data = context.dedupDataStore.data.first()
+            Pair(data[KEY_DEDUP_BODY] ?: "", data[KEY_DEDUP_TIME] ?: 0L)
+        }
+        
+        /** 同步保存去重数据到 DataStore */
+        internal fun saveDedupData(context: Context, body: String, time: Long) = runBlocking {
+            context.dedupDataStore.edit {
+                it[KEY_DEDUP_BODY] = body
+                it[KEY_DEDUP_TIME] = time
+            }
+        }
     }
+
+
 
     override fun onReceive(context: Context, intent: Intent) {
         LogStore.i("══════════ SMS 广播接收 ══════════")
@@ -85,18 +113,14 @@ class SmsReceiver : BroadcastReceiver() {
                 LogStore.i("【步骤1✓】关键词匹配成功")
 
                 // 步骤 2：去重检查
-                val lastBody = prefs.getString(KEY_LAST_BODY, "") ?: ""
-                val lastTime = prefs.getLong(KEY_LAST_TIME, 0)
+                val (lastBody, lastTime) = loadDedupData(context)
                 val now = System.currentTimeMillis()
                 if (SmsReceiverDedup.isDuplicate(body, now, lastBody, lastTime)) {
                     LogStore.w("【步骤2失败】3秒内重复短信，去重拦截 — 内容: ${body.take(40)}")
                     return
                 }
                 LogStore.i("【步骤2✓】去重检查通过")
-                prefs.edit()
-                    .putString(KEY_LAST_BODY, body)
-                    .putLong(KEY_LAST_TIME, now)
-                    .apply()
+                saveDedupData(context, body, now)
 
                 // 步骤 3：获取临时 WakeLock
                 val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager

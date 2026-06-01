@@ -1,11 +1,11 @@
-package com.example.pulse.ui.screens
+﻿package com.example.pulse.ui.screens
 
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
@@ -24,6 +24,7 @@ import com.example.pulse.ui.theme.*
 import com.example.pulse.viewmodel.SettingsViewModel
 import com.example.pulse.viewmodel.UpdateUiState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onRequestPermissions: () -> Unit,
@@ -206,10 +207,63 @@ fun SettingsScreen(
                 }
             }
 
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ── 外观设置 ──
+            SectionHeader(title = stringResource(R.string.settings_appearance_title))
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            val currentTheme by viewModel.themeMode.collectAsState()
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                SegmentedButton(
+                    selected = currentTheme == 0,
+                    onClick = { viewModel.setThemeMode(0) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = colors.darkBlue,
+                        activeContentColor = Color.White,
+                        inactiveContainerColor = colors.cardBackground,
+                        inactiveContentColor = colors.textGray,
+                    ),
+                ) {
+                    Text(stringResource(R.string.theme_follow_system))
+                }
+                SegmentedButton(
+                    selected = currentTheme == 1,
+                    onClick = { viewModel.setThemeMode(1) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = colors.darkBlue,
+                        activeContentColor = Color.White,
+                        inactiveContainerColor = colors.cardBackground,
+                        inactiveContentColor = colors.textGray,
+                    ),
+                ) {
+                    Text(stringResource(R.string.theme_light))
+                }
+                SegmentedButton(
+                    selected = currentTheme == 2,
+                    onClick = { viewModel.setThemeMode(2) },
+                    shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = colors.darkBlue,
+                        activeContentColor = Color.White,
+                        inactiveContainerColor = colors.cardBackground,
+                        inactiveContentColor = colors.textGray,
+                    ),
+                ) {
+                    Text(stringResource(R.string.theme_dark))
+                }
+            }
+
             Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }
+
 
 @Composable
 private fun SectionHeader(title: String) {
