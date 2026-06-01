@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Telephony
 
 class SmsReceiver : BroadcastReceiver() {
@@ -56,6 +57,11 @@ class SmsReceiver : BroadcastReceiver() {
                     .putString(KEY_LAST_BODY, body)
                     .putLong(KEY_LAST_TIME, now)
                     .apply()
+
+                val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pulse:SmsReceiverWakeLock")
+                wakeLock.acquire(5000) // 保持5秒，足够服务启动并获取自己的WakeLock
+                LogStore.d("SmsReceiver已获取临时WakeLock")
 
                 val serviceIntent = Intent(context, AlertService::class.java).apply {
                     putExtra("msg", body)
