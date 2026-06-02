@@ -72,25 +72,17 @@ fun DashboardScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, colors.dangerRed),
+            shape = RoundedCornerShape(4.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = Color.White,
+                containerColor = colors.primaryBlue,
                 contentColor = colors.dangerRed,
             ),
         ) {
-            Icon(
-                imageVector = Icons.Default.Campaign,
-                contentDescription = null,
-                tint = colors.dangerRed,
-                modifier = Modifier.size(20.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.test_alarm_button),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = colors.dangerRed,
+                color = Color.White,
             )
         }
 
