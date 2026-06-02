@@ -26,7 +26,6 @@ class AlarmActivity : ComponentActivity() {
 
     private var alarmMessage by mutableStateOf("")
     private var triggerKey by mutableIntStateOf(0)
-    private var alarmFired by mutableStateOf(false)
 
     private val dismissReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -37,11 +36,6 @@ class AlarmActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        LogStore.i("══════════ AlarmActivity onCreate ══════════")
-
-        val fromAlarmClock = intent.getBooleanExtra("from_alarm_clock", false)
-        LogStore.i("from_alarm_clock=$fromAlarmClock")
-
         // 诊断：屏幕和锁屏状态
         val km = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
         val isDeviceLocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -96,13 +90,6 @@ class AlarmActivity : ComponentActivity() {
         alarmMessage = msg
         LogStore.i("报警消息: ${msg.take(50)}")
 
-        if (fromAlarmClock) {
-            LogStore.i("系统闹钟触发（onCreate），重新启动 AlertService")
-            startForegroundService(Intent(this, AlertService::class.java).apply {
-                putExtra("msg", msg)
-            })
-        }
-
         setContent {
             key(triggerKey) {
                 AlarmScreen(
@@ -112,57 +99,33 @@ class AlarmActivity : ComponentActivity() {
                         finish()
                     },
                     modifier = Modifier.fillMaxSize(),
-                    alarmFired = alarmFired,
-                    onAlarmFired = {
-                        alarmFired = true
-                        // 部分 ROM 上 ACTION_SET_ALARM 会短暂跳到系统时钟界面，延迟后拉回 Pulse
-                        android.os.Handler(mainLooper).postDelayed({
-                            try {
-                                startActivity(
-                                    Intent(this@AlarmActivity, AlarmActivity::class.java).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                                    }
-                                )
-                            } catch (e: Exception) {
-                                LogStore.w("拉回 AlarmActivity 失败：${e.message}")
-                            }
-                        }, 800)
-                    },
                 )
             }
         }
-        LogStore.i("══════════ AlarmActivity 界面已渲染 ══════════")
+        LogStore.i("界面已渲染")
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        LogStore.i("══════════ AlarmActivity onNewIntent ══════════")
         val msg = intent.getStringExtra("msg") ?: getString(R.string.unknown_sms_content)
         alarmMessage = msg
-        if (intent.getBooleanExtra("from_alarm_clock", false)) {
-            LogStore.i("系统闹钟触发（onNewIntent），重新启动 AlertService")
-            startForegroundService(Intent(this, AlertService::class.java).apply {
-                putExtra("msg", msg)
-            })
-        } else {
-            LogStore.i("新短信到达（onNewIntent），更新消息并重置倒计时")
-        }
+        LogStore.i("新短信到达（onNewIntent），更新消息并重置倒计时")
         triggerKey++
     }
 
     override fun onStart() {
         super.onStart()
-        LogStore.i("══ AlarmActivity onStart — 报警界面可见 ══")
+        LogStore.i("报警界面可见 start")
     }
 
     override fun onStop() {
         super.onStop()
-        LogStore.i("══ AlarmActivity onStop — 报警界面不可见 ══")
+        LogStore.i("报警界面不可见 stop")
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        LogStore.i("══════ AlarmActivity onDestroy — 报警界面关闭 ══════")
+        LogStore.i("报警界面关闭")
         try {
             unregisterReceiver(dismissReceiver)
         } catch (e: IllegalArgumentException) {

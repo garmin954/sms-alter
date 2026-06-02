@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
 import android.os.*
-import android.provider.AlarmClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.pulse.data.dao.AlertDao
@@ -24,8 +23,6 @@ class AlertService : Service() {
         const val CHANNEL_ID = "alert_channel"
         const val ACTION_DISMISS = "com.example.pulse.ACTION_DISMISS_ALARM"
         const val ACTION_FINISH_ACTIVITY = "com.example.pulse.ACTION_FINISH_ALARM_ACTIVITY"
-        /** Pulse 在系统时钟中的闹钟唯一标签，与 AlarmScreen 中保持一致 */
-        private const val PULSE_ALARM_LABEL = "Pulse 紧急短信告警"
     }
 
     @Inject lateinit var alertDao: AlertDao
@@ -44,14 +41,12 @@ class AlertService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val fromAlarmClock = intent?.getBooleanExtra("from_alarm_clock", false) ?: false
         LogStore.i("══════════ AlertService onStartCommand ══════════")
-        LogStore.i("from_alarm_clock=$fromAlarmClock, isActive=$isActive")
+        LogStore.i("isActive=$isActive")
 
         // Handle dismiss action from notification button
         if (ACTION_DISMISS == intent?.action) {
             LogStore.i("通知栏确认按钮：关闭警报")
-            tryDismissSystemAlarm()
             sendBroadcast(Intent(ACTION_FINISH_ACTIVITY).apply {
                 setPackage(packageName)
             })
@@ -81,7 +76,6 @@ class AlertService : Service() {
 
         val alarmIntent = Intent(this, AlarmActivity::class.java).apply {
             putExtra("msg", msg)
-            putExtra("from_alarm_clock", fromAlarmClock)
             this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
@@ -146,7 +140,6 @@ class AlertService : Service() {
             }
         } else {
             LogStore.d("AlertService 已激活，更新通知内容，拉回 AlarmActivity")
-            // 新短信仅更新通知，系统闹钟的删旧+建新由 AlarmScreen 倒计时归零时统一处理
             try {
                 startActivity(alarmIntent)
                 LogStore.i("【步骤8✓】AlarmActivity 已拉回前台（新短信）")
@@ -155,12 +148,12 @@ class AlertService : Service() {
             }
         }
 
-        LogStore.i("══════════ AlertService 启动完成 ══════════")
+        LogStore.i("启动完成")
         return START_STICKY
     }
 
     override fun onDestroy() {
-        LogStore.i("AlertService onDestroy — 停止报警")
+        LogStore.i("停止报警")
         isActive = false
         ringtone?.stop()
         ringtone = null
@@ -241,18 +234,4 @@ class AlertService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun tryDismissSystemAlarm() {
-        try {
-            val intent = Intent(AlarmClock.ACTION_DISMISS_ALARM).apply {
-                putExtra(AlarmClock.EXTRA_ALARM_SEARCH_MODE, AlarmClock.ALARM_SEARCH_MODE_LABEL)
-                putExtra(AlarmClock.EXTRA_MESSAGE, PULSE_ALARM_LABEL)
-                putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-            }
-            startActivity(intent)
-            LogStore.i("已尝试撤销 Pulse 系统闹钟（通知栏确认，标签：$PULSE_ALARM_LABEL）")
-        } catch (e: Exception) {
-            LogStore.w("撤销 Pulse 系统闹钟失败：${e.message}")
-        }
-    }
 }

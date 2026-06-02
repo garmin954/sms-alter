@@ -12,11 +12,10 @@ class AlarmReceiver : BroadcastReceiver() {
         LogStore.i("系统闹钟兜底触发，消息: ${msg.take(50)}")
         val serviceIntent = Intent(context, AlertService::class.java).apply {
             putExtra("msg", msg)
-            putExtra("from_alarm_clock", true)
         }
         try {
             context.startForegroundService(serviceIntent)
-            LogStore.i("AlarmReceiver 已启动 AlertService（from_alarm_clock=true）")
+            LogStore.i("AlarmReceiver 已启动 AlertService")
         } catch (e: Exception) {
             LogStore.e("AlarmReceiver 启动 AlertService 失败: ${e.javaClass.simpleName}: ${e.message}")
             e.printStackTrace()

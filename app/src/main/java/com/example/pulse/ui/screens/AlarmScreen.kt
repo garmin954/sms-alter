@@ -1,9 +1,6 @@
 ﻿package com.example.pulse.ui.screens
 
-import android.content.Context
 import android.content.Intent
-import android.provider.AlarmClock
-
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -30,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,56 +48,7 @@ import java.util.Date
 import java.util.Locale
 
 /** 用户确认前的 UI 倒计时秒数 */
-private const val COUNTDOWN_SECONDS = 20
-
-/** Pulse 在系统时钟中的闹钟唯一标签，用于先删后建确保只有一个 Pulse 闹钟，避免误删其他应用闹钟 */
-private const val PULSE_ALARM_LABEL = "Pulse 紧急短信告警"
-
-/**
- * 通过 PULSE_ALARM_LABEL 固定标签在系统时钟 App 创建可见闹钟。
- * skipUi=true 静默创建，不弹出时钟界面。
- * 系统闹钟 API 仅支持分钟级精度，闹钟设在下一整分触发（最长 60s 延迟）。
- * 调用前应先 tryDismissPulseAlarm() 清理旧闹钟，确保标签下只有一个。
- */
-private fun setSystemAlarmViaIntent(context: Context) {
-    val calendar = java.util.Calendar.getInstance().apply {
-        set(java.util.Calendar.SECOND, 0)
-        add(java.util.Calendar.MINUTE, 1)
-    }
-    val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
-    val minute = calendar.get(java.util.Calendar.MINUTE)
-    val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-        putExtra(AlarmClock.EXTRA_HOUR, hour)
-        putExtra(AlarmClock.EXTRA_MINUTES, minute)
-        putExtra(AlarmClock.EXTRA_MESSAGE, PULSE_ALARM_LABEL)
-        putExtra(AlarmClock.EXTRA_VIBRATE, true)
-        putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-        putExtra(AlarmClock.EXTRA_DAYS, ArrayList<Int>())  // 仅一次，不重复
-    }
-    try {
-        context.startActivity(intent)
-        LogStore.i("系统闹钟已创建：${"%02d".format(hour)}:${"%02d".format(minute)}，标签：$PULSE_ALARM_LABEL")
-    } catch (e: Exception) {
-        LogStore.w("ACTION_SET_ALARM 失败：${e.message}")
-    }
-}
-
-/**
- * 按 PULSE_ALARM_LABEL 固定标签删除 Pulse 系统闹钟，不会误删其他应用的闹钟。
- */
-private fun tryDismissPulseAlarm(context: Context) {
-    try {
-        val intent = Intent(AlarmClock.ACTION_DISMISS_ALARM).apply {
-            putExtra(AlarmClock.EXTRA_ALARM_SEARCH_MODE, AlarmClock.ALARM_SEARCH_MODE_LABEL)
-            putExtra(AlarmClock.EXTRA_MESSAGE, PULSE_ALARM_LABEL)
-            putExtra(AlarmClock.EXTRA_SKIP_UI, true)
-        }
-        context.startActivity(intent)
-        LogStore.i("已尝试撤销 Pulse 系统闹钟（标签：$PULSE_ALARM_LABEL）")
-    } catch (e: Exception) {
-        LogStore.w("撤销 Pulse 系统闹钟失败：${e.message}")
-    }
-}
+private const val COUNTDOWN_SECONDS = 60
 
 
 @Composable
@@ -109,8 +56,6 @@ fun AlarmScreen(
     message: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
-    alarmFired: Boolean = false,
-    onAlarmFired: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -119,28 +64,17 @@ fun AlarmScreen(
     }
 
     var remainingSeconds by remember { mutableIntStateOf(COUNTDOWN_SECONDS) }
-    var systemAlarmCreated by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (alarmFired) return@LaunchedEffect
         while (remainingSeconds > 0) {
             kotlinx.coroutines.delay(1000)
             remainingSeconds--
         }
-        // 倒计时归零：先删旧的系统闹钟（防止残留），再建新的兜底
-        tryDismissPulseAlarm(context)
-        setSystemAlarmViaIntent(context)
-        systemAlarmCreated = true
-        LogStore.i("倒计时到期，系统闹钟已重新创建，停止 AlertService")
         context.stopService(Intent(context, AlertService::class.java))
-        onAlarmFired()
+        LogStore.i("倒计时归零，AlertService 已停止")
     }
 
-    // 用户主动确认：仅当系统闹钟已创建时才尝试撤销（避免20s内确认时无意义跳转系统时钟App）
     val dismissWithCancel: () -> Unit = {
-        if (systemAlarmCreated) {
-            tryDismissPulseAlarm(context)
-        }
         context.stopService(Intent(context, AlertService::class.java))
         LogStore.i("用户已确认警报，AlertService 已停止")
         onDismiss()
@@ -212,7 +146,7 @@ fun AlarmScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             } else {
                 Text(
-                    text = "等待系统闹钟唤醒...",
+                    text = "警报已超时",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = AlarmSubtitleRed,

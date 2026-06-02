@@ -56,7 +56,7 @@ app/src/main/java/com/example/pulse/
 │   │   ├── DashboardScreen.kt  # 首页：监听球 + 关键词管理 + 测试按钮
 │   │   ├── HistoryScreen.kt    # 历史页：报警记录（Room）+ 运行日志（LogStore）
 │   │   ├── SettingsScreen.kt   # 设置页：权限状态 + 版本号 + 检查更新 + 主题切换（3 模式 SegmentedButton）
-│   │   └── AlarmScreen.kt      # 全屏报警 Compose UI（20s 倒计时 + 双兜底闹钟 + 确认时取消）
+│   │   └── AlarmScreen.kt      # 全屏报警 Compose UI（20s 倒计时 + 确认时取消）
 │   └── components/
 │       ├── ListeningOrb.kt     # 监听状态球（呼吸动画 + 水波纹）
 │       ├── KeywordCard.kt      # 关键词输入 + Chip 列表
@@ -74,95 +74,102 @@ app/src/main/java/com/example/pulse/
 
 ### 3.1 报警触发链路
 
-```
-Incoming SMS
-    │
-    ▼
-SmsReceiver.onReceive()
-    ├── 解析短信内容 (Telephony.Sms.Intents.getMessagesFromIntent)
-    ├── 获取关键词列表
-    │     ├── 优先：KeywordStore.getInstance()?.getKeywords()（内存缓存同步读取）
-    │     └── 兜底：loadKeywordsFallback(prefs) — 从 SharedPreferences 读取（非空默认值）
-    ├── 【步骤1】关键词匹配 — matchKeywords(body, keywords)（大小写不敏感）
-    ├── 【步骤2】去重检查 — SmsReceiverDedup.isDuplicate() + 内联 DataStore 持久化（3s 窗口）
-    │     ├── loadDedupData(context) — runBlocking 同步读取 DataStore
-    │     └── saveDedupData(context, body, now) — runBlocking 同步写入 DataStore
-    ├── 【步骤3】获取临时 WakeLock — PARTIAL_WAKE_LOCK，5s 超时，防止 CPU 在启动 Service 前休眠
-    └── 【步骤4】startForegroundService(AlertService)
-            │
-            ▼
-        AlertService.onStartCommand()
-            ├── 保存 AlertRecord 到 Room
-            ├── acquireWakeLock() — PARTIAL_WAKE_LOCK|ACQUIRE_CAUSES_WAKEUP|ON_AFTER_RELEASE（60s 超时）
-            ├── triggerAlarm() — 循环振动 + 循环铃声
-            ├── startForeground() — 高优先级通知（含 FullScreenIntent + 关闭按钮）
-            └── startActivity(AlarmActivity) — 全屏弹窗
-                    │
-                    ▼
-                AlarmScreen
-                    ├── 20s UI 倒计时
-                    ├── 用户确认 → tryDismissSystemAlarm() → 停止 AlertService → dismiss
-                    │   （ACTION_DISMISS_ALARM 撤销系统时钟闹钟）
-                    ├── 通知栏关闭 → AlertService 接收 ACTION_DISMISS → tryDismissSystemAlarm() → 发送 ACTION_FINISH_ACTIVITY → 关闭 Activity
-                    └── 倒计时归零 → 停止 AlertService
-                          └── setSystemAlarmViaIntent() — ACTION_SET_ALARM 创建系统时钟可见闹钟（仅分钟级精度，用户可在时钟 App 看到）
+```mermaid
+flowchart TB
+    A[Incoming SMS] --> B[SmsReceiver.onReceive]
+    B --> C[解析短信内容<br/>Telephony.Sms.Intents.getMessagesFromIntent]
+    C --> D[获取关键词列表]
+    D --> D1[优先: KeywordStore.getInstance<br/>内存缓存同步读取]
+    D --> D2[兜底: loadKeywordsFallback<br/>SharedPreferences + 默认值]
+    D1 --> E[步骤1: 关键词匹配<br/>matchKeywords 大小写不敏感]
+    D2 --> E
+    E --> F{匹配成功?}
+    F -- 否 --> G[结束]
+    F -- 是 --> H[步骤2: 去重检查<br/>3s 窗口]
+    H --> H1[loadDedupData<br/>runBlocking 读取 DataStore]
+    H1 --> H2[SmsReceiverDedup.isDuplicate<br/>内容+时间戳比对]
+    H2 --> H3{是重复?}
+    H3 -- 是 --> G
+    H3 -- 否 --> I[saveDedupData<br/>runBlocking 写入 DataStore]
+    I --> J[步骤3: 获取临时 WakeLock<br/>PARTIAL_WAKE_LOCK 5s]
+    J --> K[步骤4: startForegroundService<br/>AlertService]
+    K --> L[AlertService.onStartCommand]
+    L --> M[保存 AlertRecord 到 Room]
+    M --> N[acquireWakeLock<br/>PARTIAL_WAKE_LOCK 60s]
+    N --> O[triggerAlarm<br/>循环振动 + 循环铃声]
+    O --> P[startForeground<br/>高优先级通知 + FullScreenIntent]
+    P --> Q[startActivity<br/>AlarmActivity]
+    Q --> R[AlarmScreen UI]
+    R --> S[20s 倒计时]
+    S --> T{用户操作?}
+    T -- 点击确认 --> U[停止 AlertService → dismiss]
+    T -- 通知栏关闭 --> V[AlertService 接收 ACTION_DISMISS<br/>发送 ACTION_FINISH_ACTIVITY → 关闭]
+    T -- 倒计时归零 --> X[停止 AlertService<br/>显示"警报已超时"]
+    U --> W[关闭 Activity]
+    V --> W
 ```
 
 ### 3.2 监听控制链路
 
-```
-用户点击 ListeningOrb
-    │
-    ▼
-DashboardViewModel.toggleListening()
-    ├── 检查必需权限（checkEssentialPermissions：# SMS + 通知 + 悬浮窗 + 电池优化，不含 SCHEDULE_EXACT_ALARM）
-    ├── AppPreferences.setIsListening() — DataStore 持久化
-    ├── SmsReceiver.setEnabled() — 动态启用/禁用组件
-    └── MonitorService.start() / stop() — 前台服务
-            │
-            ▼
-        MonitorService.onStartCommand()
-            ├── 发布前台通知（含 Chronometer 计时）
-            └── KeepAliveScheduler.schedule() — 调度 15min 保活闹钟
+```mermaid
+flowchart TB
+    A[用户点击 ListeningOrb] --> B[DashboardViewModel.toggleListening]
+    B --> C[检查必需权限<br/>checkEssentialPermissions]
+    C --> D{权限通过?<br/>SMS + 通知 + 悬浮窗 + 电池优化}
+    D -- 否 --> E[显示权限提示]
+    D -- 是 --> F[AppPreferences.setIsListening<br/>DataStore 持久化]
+    F --> G{当前状态?}
+    G -- 开启监听 --> H[SmsReceiver.setEnabled<br/>启用组件]
+    G -- 关闭监听 --> I[SmsReceiver.setEnabled<br/>禁用组件]
+    H --> J[MonitorService.start]
+    I --> K[MonitorService.stop]
+    J --> L[MonitorService.onStartCommand]
+    K --> M[结束]
+    L --> N[发布前台通知<br/>含 Chronometer 计时]
+    N --> O[KeepAliveScheduler.schedule<br/>调度 15min 保活闹钟]
 ```
 
 ### 3.3 更新检查链路
 
-```
-用户点击"检查更新"
-    │
-    ▼
-SettingsViewModel.checkForUpdates()
-    ├── 设置 UpdateUiState.Checking
-    ├── UpdateChecker.check(currentVersion)
-    │     └── GET https://api.github.com/repos/garmin954/sms-alter/releases
-    │         ├── 取第一个非 draft release
-    │         ├── 比较 tag_name（去 v 前缀，语义化版本号逐段比较）
-    │         └── 返回 UpdateResult（UpdateAvailable / UpToDate / Error）
-    └── 更新 UpdateUiState → SettingsScreen 显示 Snackbar 或弹出版本更新对话框
+```mermaid
+flowchart TB
+    A[用户点击 检查更新] --> B[SettingsViewModel.checkForUpdates]
+    B --> C[设置 UpdateUiState.Checking]
+    C --> D[UpdateChecker.check<br/>currentVersion]
+    D --> E[GET GitHub Releases API<br/>api.github.com/repos/garmin954/sms-alter/releases]
+    E --> F{HTTP 403?<br/>+ rate limit}
+    F -- 是 --> G[返回 Error<br/>限流提示]
+    F -- 否 --> H[取第一个非 draft release]
+    H --> I[比较 tag_name<br/>去 v 前缀 + 语义化版本比较]
+    I --> J{版本更新?}
+    J -- 新版本 --> K[返回 UpdateAvailable<br/>versionName + htmlUrl + changelog]
+    J -- 已最新 --> L[返回 UpToDate]
+    J -- 网络错误 --> M[返回 Error]
+    K --> N[更新 UpdateUiState<br/>显示版本更新对话框]
+    L --> O[更新 UpdateUiState<br/>显示 Snackbar 已最新]
+    M --> P[更新 UpdateUiState<br/>显示错误提示]
+    G --> P
 ```
 
 ### 3.4 保活与进程复活链路
 
-```
-Android BOOT_COMPLETED
-    │ 或 KeepAliveScheduler 15min 闹钟触发
-    ▼
-BootAndKeepAliveReceiver.onReceive()
-    ├── 通过 @Inject appPreferences 读取 isListening（默认 true）
-    ├── 若未监听 → 跳过
-    ├── 若 MonitorService 未运行 → MonitorService.start()（onStartCommand 中自动调度下次保活）
-    ├── 若 MonitorService 已在运行 → KeepAliveScheduler.schedule()（直接续期保活定时器）
-            │
-            ▼
-        15min 后 AlarmManager 再次触发
-            │
-            ▼
-        BootAndKeepAliveReceiver.onReceive()
-            └── 循环……
-
-MonitorService 未运行：由它的 onStartCommand() 负责调度下次保活；
-MonitorService 已在运行：由 BootAndKeepAliveReceiver 直接调度。两者互斥，无冗余。
+```mermaid
+flowchart TB
+    A[触发源] --> A1[Android BOOT_COMPLETED]
+    A --> A2[KeepAliveScheduler 15min 闹钟]
+    A1 --> B[BootAndKeepAliveReceiver.onReceive]
+    A2 --> B
+    B --> C[读取 appPreferences.isListening<br/>@Inject + 默认 true]
+    C --> D{正在监听?}
+    D -- 否 --> E[跳过保活]
+    D -- 是 --> F{MonitorService<br/>是否运行?}
+    F -- 否 --> G[MonitorService.start]
+    G --> H[MonitorService.onStartCommand<br/>自动调度下次保活]
+    F -- 是 --> I[KeepAliveScheduler.schedule<br/>直接续期保活定时器]
+    H --> J[15min 后再次触发]
+    I --> J
+    J --> B
+    E --> K[结束]
 ```
 
 ---
@@ -196,20 +203,15 @@ MonitorService 已在运行：由 BootAndKeepAliveReceiver 直接调度。两者
 - 铃声：`RingtoneManager.TYPE_ALARM`，`isLooping = true`。
 - WakeLock：`PARTIAL_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP | ON_AFTER_RELEASE`，60 秒超时，`setReferenceCounted(false)`。
   - 注意：虽然注释说"屏幕唤醒由 AlarmActivity 处理，Service 只需保持 CPU"，但实际代码仍使用了 `ACQUIRE_CAUSES_WAKEUP`，这意味着 Service 层面也会唤醒屏幕，与注释矛盾。建议二选一。
-- **通知栏关闭按钮**：发送 `ACTION_DISMISS` Intent → AlertService 收到后调用 `tryDismissSystemAlarm()` 尝试撤销系统闹钟 → 广播 `ACTION_FINISH_ACTIVITY` 通知 AlarmActivity 关闭。
+- **通知栏关闭按钮**：发送 `ACTION_DISMISS` Intent → AlertService 收到后广播 `ACTION_FINISH_ACTIVITY` 通知 AlarmActivity 关闭。
 - 通知已 `setFullScreenIntent(pendingIntent, true)`，确保锁屏时也能全屏弹出。
 - 服务销毁时自动停止铃声、取消振动、释放 WakeLock、取消协程作用域。
 
-### 4.3 AlarmScreen 倒计时与兜底
+### 4.3 AlarmScreen 倒计时
 
-- 常量：`COUNTDOWN_SECONDS = 20`（UI 倒计时），`FALLBACK_DELAY_SECONDS = 15L`（倒计时归零后系统闹钟延迟秒数）。总兜底时间 = 20 + 15 = 35s。
-- **兜底机制**：倒计时归零时通过 `ACTION_SET_ALARM` 在系统时钟 App 创建用户可见的一次性闹钟（15s 后触发，`skipUi=true` 静默创建）。系统闹钟 API 仅支持分钟级精度，实际触发时间为向上取整到下一整分。
-- **用户点击确认**（`dismissWithCancel`）：
-  1. `tryDismissSystemAlarm(context, message)` — 通过 `ACTION_DISMISS_ALARM` 按标签撤销系统时钟闹钟
-  2. `context.stopService(AlertService)` — 停止报警服务
-  3. `onDismiss()` — 关闭 Activity
-- **用户未操作**：20s 倒计时归零 → 停止 AlertService → 15s 后系统时钟闹钟触发（用户可在时钟 App 中看到并手动处理）。
-- ⚠ **已知问题**：`setSystemAlarmViaIntent()` 中 Calendar 的分钟舍入逻辑有误——加 15 秒后检查 `get(SECOND) > 0` 然后加 1 分钟，由于 15 秒很少恰好跨整分，闹钟实际被设置在约 60-75 秒后而非预期的 15 秒。建议先 `set(SECOND, 0)` 再 `add(MINUTE, 1)`。
+- 常量：`COUNTDOWN_SECONDS = 20`（UI 倒计时）。
+- **用户点击确认**（`dismissWithCancel`）：停止 AlertService → `onDismiss()` 关闭 Activity。
+- **用户未操作**：20s 倒计时归零 → 停止 AlertService → 界面保持显示，显示"警报已超时"。
 
 ### 4.4 MonitorService
 
@@ -296,7 +298,6 @@ MonitorService 已在运行：由 BootAndKeepAliveReceiver 直接调度。两者
   - `autostart`：根据厂商（Xiaomi/OPPO/vivo/Huawei/Samsung）尝试跳转对应自启动管理页，均失败则回退到应用详情页。
   - `alarm`：Android 12+ 跳转 `ACTION_REQUEST_SCHEDULE_EXACT_ALARM`，低版本回退到应用详情页。
   - `lockscreen`：跳转通知渠道设置 → 应用通知设置 → 应用详情（三级回退）。
-- `com.android.alarm.permission.SET_ALARM` 声明在 Manifest 中，用于 `ACTION_SET_ALARM` 在系统时钟 App 中创建可见闹钟。
 
 ---
 
@@ -344,10 +345,9 @@ MonitorService 已在运行：由 BootAndKeepAliveReceiver 直接调度。两者
 - `SmsReceiver.kt` 中 `DEFAULT_KEYWORDS`（当前为 `listOf("ALERT", "紧急", "交警", "服务器宕机")`，控制 Hilt 未就绪时 `loadKeywordsFallback()` 的兜底匹配值）。
 - 建议统一为一个数据源。
 
-### 7.2 调整报警倒计时或兜底闹钟延迟
+### 7.2 调整报警倒计时
 
-- UI 倒计时：修改 `AlarmScreen.kt` 中 `COUNTDOWN_SECONDS` 常量（默认 20s）。
-- 兜底闹钟延迟：修改 `AlarmScreen.kt` 中 `FALLBACK_DELAY_SECONDS` 常量（默认 15s，从倒计时归零起算）。
+修改 `AlarmScreen.kt` 中 `COUNTDOWN_SECONDS` 常量（默认 20s）。
 
 ### 7.3 修改报警铃声
 
@@ -385,8 +385,7 @@ MonitorService 已在运行：由 BootAndKeepAliveReceiver 直接调度。两者
 
 ## 8. 注意事项
 
-- **AlarmScreen 的倒计时与系统闹钟是兜底机制**：倒计时归零后在系统时钟 App 创建可见闹钟，确保即使应用被系统限制后台，用户仍能收到提醒。总兜底时间 = COUNTDOWN_SECONDS + FALLBACK_DELAY_SECONDS ≈ 35s（因系统闹钟分钟级精度，实际可能更长）。
-- **已知问题 — System Alarm Calendar 舍入**：`setSystemAlarmViaIntent()` 中 Calendar 在加 15s 后的分钟舍入逻辑有误，导致系统时钟闹钟设置在约 60-75s 后而非 15s。
+- **AlarmScreen 20s 倒计时**：用户确认或倒计时归零后自动停止 AlertService 并关闭报警界面。
 - **MonitorService 计时持久化**：使用 `SystemClock.elapsedRealtime()` + `AppPreferences` 的 `saveMonitorStartTime()` / `getMonitorStartTime()` 持久化启动时间，进程重启后可恢复计时（兼容旧版 `monitor_prefs`）。设备重启后 `elapsedRealtime` 归零，旧值被抛弃。
 - **保活机制**：`KeepAliveScheduler` 每 15min 通过 `AlarmManager.setExactAndAllowWhileIdle` 触发 `BootAndKeepAliveReceiver`，若监听开启且 MonitorService 未运行则自动重启并调度下次保活；若已在运行则直接续期保活定时器。此机制与 MonitorService 绑定，关闭监听后不再调度。
 - **厂商权限**：自启动、后台弹出界面、锁屏显示等无法通过标准 API 检测，设置页中标记为"需手动设置"并引导用户跳转。`MainActivity.openAutoStartSettings()` 根据厂商（Xiaomi/OPPO/vivo/Huawei/Samsung）尝试跳转对应自启动管理页。
