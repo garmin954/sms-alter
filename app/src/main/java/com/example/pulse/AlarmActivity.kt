@@ -26,6 +26,7 @@ class AlarmActivity : ComponentActivity() {
 
     private var alarmMessage by mutableStateOf("")
     private var triggerKey by mutableIntStateOf(0)
+    private var alarmFired by mutableStateOf(false)
 
     private val dismissReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -111,6 +112,22 @@ class AlarmActivity : ComponentActivity() {
                         finish()
                     },
                     modifier = Modifier.fillMaxSize(),
+                    alarmFired = alarmFired,
+                    onAlarmFired = {
+                        alarmFired = true
+                        // 部分 ROM 上 ACTION_SET_ALARM 会短暂跳到系统时钟界面，延迟后拉回 Pulse
+                        android.os.Handler(mainLooper).postDelayed({
+                            try {
+                                startActivity(
+                                    Intent(this@AlarmActivity, AlarmActivity::class.java).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                                    }
+                                )
+                            } catch (e: Exception) {
+                                LogStore.w("拉回 AlarmActivity 失败：${e.message}")
+                            }
+                        }, 800)
+                    },
                 )
             }
         }
@@ -120,15 +137,17 @@ class AlarmActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         LogStore.i("══════════ AlarmActivity onNewIntent ══════════")
+        val msg = intent.getStringExtra("msg") ?: getString(R.string.unknown_sms_content)
+        alarmMessage = msg
         if (intent.getBooleanExtra("from_alarm_clock", false)) {
             LogStore.i("系统闹钟触发（onNewIntent），重新启动 AlertService")
-            val msg = intent.getStringExtra("msg") ?: getString(R.string.unknown_sms_content)
-            alarmMessage = msg
             startForegroundService(Intent(this, AlertService::class.java).apply {
                 putExtra("msg", msg)
             })
-            triggerKey++
+        } else {
+            LogStore.i("新短信到达（onNewIntent），更新消息并重置倒计时")
         }
+        triggerKey++
     }
 
     override fun onStart() {

@@ -24,6 +24,8 @@ class AlertService : Service() {
         const val CHANNEL_ID = "alert_channel"
         const val ACTION_DISMISS = "com.example.pulse.ACTION_DISMISS_ALARM"
         const val ACTION_FINISH_ACTIVITY = "com.example.pulse.ACTION_FINISH_ALARM_ACTIVITY"
+        /** Pulse 在系统时钟中的闹钟唯一标签，与 AlarmScreen 中保持一致 */
+        private const val PULSE_ALARM_LABEL = "Pulse 紧急短信告警"
     }
 
     @Inject lateinit var alertDao: AlertDao
@@ -143,7 +145,14 @@ class AlertService : Service() {
                 e.printStackTrace()
             }
         } else {
-            LogStore.d("AlertService 已激活，更新通知内容")
+            LogStore.d("AlertService 已激活，更新通知内容，拉回 AlarmActivity")
+            // 新短信仅更新通知，系统闹钟的删旧+建新由 AlarmScreen 倒计时归零时统一处理
+            try {
+                startActivity(alarmIntent)
+                LogStore.i("【步骤8✓】AlarmActivity 已拉回前台（新短信）")
+            } catch (e: Exception) {
+                LogStore.e("【步骤8失败】拉回 AlarmActivity 失败: ${e.javaClass.simpleName}: ${e.message}")
+            }
         }
 
         LogStore.i("══════════ AlertService 启动完成 ══════════")
@@ -237,13 +246,13 @@ class AlertService : Service() {
         try {
             val intent = Intent(AlarmClock.ACTION_DISMISS_ALARM).apply {
                 putExtra(AlarmClock.EXTRA_ALARM_SEARCH_MODE, AlarmClock.ALARM_SEARCH_MODE_LABEL)
-                putExtra(AlarmClock.EXTRA_MESSAGE, currentMessage.take(40))
+                putExtra(AlarmClock.EXTRA_MESSAGE, PULSE_ALARM_LABEL)
                 putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             }
             startActivity(intent)
-            LogStore.i("已尝试撤销系统闹钟（通知栏确认）")
+            LogStore.i("已尝试撤销 Pulse 系统闹钟（通知栏确认，标签：$PULSE_ALARM_LABEL）")
         } catch (e: Exception) {
-            LogStore.w("撤销系统闹钟失败：${e.message}")
+            LogStore.w("撤销 Pulse 系统闹钟失败：${e.message}")
         }
     }
 }

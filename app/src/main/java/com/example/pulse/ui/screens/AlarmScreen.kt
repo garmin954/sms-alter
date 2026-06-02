@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,57 +54,52 @@ import java.util.Locale
 /** 用户确认前的 UI 倒计时秒数 */
 private const val COUNTDOWN_SECONDS = 20
 
-/** 倒计时归零后，系统闹钟延迟秒数（从归零时刻起算）*/
-private const val FALLBACK_DELAY_SECONDS = 15L
+/** Pulse 在系统时钟中的闹钟唯一标签，用于先删后建确保只有一个 Pulse 闹钟，避免误删其他应用闹钟 */
+private const val PULSE_ALARM_LABEL = "Pulse 紧急短信告警"
 
 /**
- * 通过 ACTION_SET_ALARM 在系统时钟 App 创建可见闹钟（用户可在时钟 App 中看到）。
+ * 通过 PULSE_ALARM_LABEL 固定标签在系统时钟 App 创建可见闹钟。
  * skipUi=true 静默创建，不弹出时钟界面。
- *
- * 系统闹钟 API 仅支持分钟级精度，实际触发时间为「当前时间 + FALLBACK_DELAY_SECONDS」
- * 向上取整到下一整分，偏差范围 0 ~ 59 秒。
+ * 系统闹钟 API 仅支持分钟级精度，闹钟设在下一整分触发（最长 60s 延迟）。
+ * 调用前应先 tryDismissPulseAlarm() 清理旧闹钟，确保标签下只有一个。
  */
-private fun setSystemAlarmViaIntent(context: Context, message: String) {
+private fun setSystemAlarmViaIntent(context: Context) {
     val calendar = java.util.Calendar.getInstance().apply {
-        // 当前时间 + 15s，再向上取整到下一整分
-        add(java.util.Calendar.SECOND, FALLBACK_DELAY_SECONDS.toInt())
-        if (get(java.util.Calendar.SECOND) > 0) {
-            set(java.util.Calendar.SECOND, 0)
-            add(java.util.Calendar.MINUTE, 1)
-        }
+        set(java.util.Calendar.SECOND, 0)
+        add(java.util.Calendar.MINUTE, 1)
     }
     val hour = calendar.get(java.util.Calendar.HOUR_OF_DAY)
     val minute = calendar.get(java.util.Calendar.MINUTE)
     val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
         putExtra(AlarmClock.EXTRA_HOUR, hour)
         putExtra(AlarmClock.EXTRA_MINUTES, minute)
-        putExtra(AlarmClock.EXTRA_MESSAGE, message.take(40))
+        putExtra(AlarmClock.EXTRA_MESSAGE, PULSE_ALARM_LABEL)
         putExtra(AlarmClock.EXTRA_VIBRATE, true)
         putExtra(AlarmClock.EXTRA_SKIP_UI, true)
         putExtra(AlarmClock.EXTRA_DAYS, ArrayList<Int>())  // 仅一次，不重复
     }
     try {
         context.startActivity(intent)
-        LogStore.i("系统闹钟已创建：${hour}:${String.format("%02d", minute)}")
+        LogStore.i("系统闹钟已创建：${"%02d".format(hour)}:${"%02d".format(minute)}，标签：$PULSE_ALARM_LABEL")
     } catch (e: Exception) {
         LogStore.w("ACTION_SET_ALARM 失败：${e.message}")
     }
 }
 
 /**
- * 尝试通过 ACTION_DISMISS_ALARM 按标签撤销系统闹钟（尽力而为，不保证成功）。
+ * 按 PULSE_ALARM_LABEL 固定标签删除 Pulse 系统闹钟，不会误删其他应用的闹钟。
  */
-private fun tryDismissSystemAlarm(context: Context, message: String) {
+private fun tryDismissPulseAlarm(context: Context) {
     try {
         val intent = Intent(AlarmClock.ACTION_DISMISS_ALARM).apply {
             putExtra(AlarmClock.EXTRA_ALARM_SEARCH_MODE, AlarmClock.ALARM_SEARCH_MODE_LABEL)
-            putExtra(AlarmClock.EXTRA_MESSAGE, message.take(40))
+            putExtra(AlarmClock.EXTRA_MESSAGE, PULSE_ALARM_LABEL)
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
         }
         context.startActivity(intent)
-        LogStore.i("已尝试撤销系统闹钟（ACTION_DISMISS_ALARM）")
+        LogStore.i("已尝试撤销 Pulse 系统闹钟（标签：$PULSE_ALARM_LABEL）")
     } catch (e: Exception) {
-        LogStore.w("撤销系统闹钟失败：${e.message}")
+        LogStore.w("撤销 Pulse 系统闹钟失败：${e.message}")
     }
 }
 
@@ -113,6 +109,8 @@ fun AlarmScreen(
     message: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    alarmFired: Boolean = false,
+    onAlarmFired: () -> Unit = {},
 ) {
     val context = LocalContext.current
 
@@ -121,21 +119,28 @@ fun AlarmScreen(
     }
 
     var remainingSeconds by remember { mutableIntStateOf(COUNTDOWN_SECONDS) }
+    var systemAlarmCreated by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        if (alarmFired) return@LaunchedEffect
         while (remainingSeconds > 0) {
             kotlinx.coroutines.delay(1000)
             remainingSeconds--
         }
-        // 倒计时归零：创建系统时钟可见闹钟，停止 AlertService
-        setSystemAlarmViaIntent(context, message)
-        LogStore.i("倒计时到期，停止 AlertService，系统闹钟已设置")
+        // 倒计时归零：先删旧的系统闹钟（防止残留），再建新的兜底
+        tryDismissPulseAlarm(context)
+        setSystemAlarmViaIntent(context)
+        systemAlarmCreated = true
+        LogStore.i("倒计时到期，系统闹钟已重新创建，停止 AlertService")
         context.stopService(Intent(context, AlertService::class.java))
+        onAlarmFired()
     }
 
-    // 用户主动确认：尝试撤销系统时钟闹钟，停止 AlertService
+    // 用户主动确认：仅当系统闹钟已创建时才尝试撤销（避免20s内确认时无意义跳转系统时钟App）
     val dismissWithCancel: () -> Unit = {
-        tryDismissSystemAlarm(context, message)
+        if (systemAlarmCreated) {
+            tryDismissPulseAlarm(context)
+        }
         context.stopService(Intent(context, AlertService::class.java))
         LogStore.i("用户已确认警报，AlertService 已停止")
         onDismiss()
