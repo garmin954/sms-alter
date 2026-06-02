@@ -34,6 +34,7 @@ class MonitorService : Service() {
     companion object {
         const val CHANNEL_ID = "monitor_channel"
         const val NOTIFICATION_ID = 100
+        const val EXTRA_RESET_TIME = "reset_time"
 
         @Volatile
         private var _isRunning = false
@@ -44,8 +45,10 @@ class MonitorService : Service() {
         fun getElapsedMs(): Long =
             if (_isRunning) SystemClock.elapsedRealtime() - _startTime else 0L
 
-        fun start(context: Context) {
-            val intent = Intent(context, MonitorService::class.java)
+        fun start(context: Context, resetTime: Boolean = true) {
+            val intent = Intent(context, MonitorService::class.java).apply {
+                putExtra(EXTRA_RESET_TIME, resetTime)
+            }
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
@@ -64,25 +67,37 @@ class MonitorService : Service() {
         }
     }
 
+    private var shouldResetTime = false
+
     override fun onCreate() {
         super.onCreate()
         _isRunning = true
-        // 从 DataStore 恢复计时（兼容旧版 SharedPreferences 遗留数据）
-        serviceScope.launch {
-            val restored = appPreferences.getMonitorStartTime()
-            val valid = if (restored > 0L && restored <= SystemClock.elapsedRealtime()) restored else 0L
-            _startTime = if (valid > 0L) valid else SystemClock.elapsedRealtime()
-            if (valid > 0L) {
-                LogStore.i("MonitorService 恢复计时: $_startTime")
-            } else {
-                LogStore.i("MonitorService 新建计时: $_startTime")
-            }
-            appPreferences.saveMonitorStartTime(_startTime)
-        }
         createChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        shouldResetTime = intent?.getBooleanExtra(EXTRA_RESET_TIME, false) == true
+
+        if (shouldResetTime) {
+            _startTime = SystemClock.elapsedRealtime()
+            serviceScope.launch {
+                appPreferences.saveMonitorStartTime(_startTime)
+            }
+            LogStore.i("MonitorService 重置计时: $_startTime")
+        } else {
+            serviceScope.launch {
+                val restored = appPreferences.getMonitorStartTime()
+                val valid = if (restored > 0L && restored <= SystemClock.elapsedRealtime()) restored else 0L
+                _startTime = if (valid > 0L) valid else SystemClock.elapsedRealtime()
+                if (valid > 0L) {
+                    LogStore.i("MonitorService 恢复计时: $_startTime")
+                } else {
+                    LogStore.i("MonitorService 新建计时: $_startTime")
+                }
+                appPreferences.saveMonitorStartTime(_startTime)
+            }
+        }
+
         pendingIntent = PendingIntent.getActivity(
             this, 0,
             Intent(this, MainActivity::class.java),

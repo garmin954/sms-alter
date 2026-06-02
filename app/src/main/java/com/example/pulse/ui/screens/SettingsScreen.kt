@@ -183,7 +183,7 @@ fun SettingsScreen(
                             onClick = { viewModel.checkForUpdates() },
                             enabled = !isChecking,
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = colors.darkBlue,
+                                containerColor = colors.primaryBlue,
                                 disabledContainerColor = colors.darkBlue.copy(alpha = 0.6f),
                             ),
                         ) {
@@ -223,39 +223,39 @@ fun SettingsScreen(
                     onClick = { viewModel.setThemeMode(0) },
                     shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = colors.darkBlue,
-                        activeContentColor = Color.White,
-                        inactiveContainerColor = colors.cardBackground,
-                        inactiveContentColor = colors.textGray,
+                        activeContainerColor = colors.primaryBlue,
                     ),
                 ) {
-                    Text(stringResource(R.string.theme_follow_system))
+                    Text(
+                        stringResource(R.string.theme_follow_system),
+                        color = if (currentTheme == 0) Color.White else colors.textGray
+                    )
                 }
                 SegmentedButton(
                     selected = currentTheme == 1,
                     onClick = { viewModel.setThemeMode(1) },
                     shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = colors.darkBlue,
-                        activeContentColor = Color.White,
-                        inactiveContainerColor = colors.cardBackground,
-                        inactiveContentColor = colors.textGray,
+                        activeContainerColor = colors.primaryBlue,
                     ),
                 ) {
-                    Text(stringResource(R.string.theme_light))
+                    Text(
+                        stringResource(R.string.theme_light),
+                        color = if (currentTheme == 1) Color.White else colors.textGray
+                    )
                 }
                 SegmentedButton(
                     selected = currentTheme == 2,
                     onClick = { viewModel.setThemeMode(2) },
                     shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = colors.darkBlue,
-                        activeContentColor = Color.White,
-                        inactiveContainerColor = colors.cardBackground,
-                        inactiveContentColor = colors.textGray,
+                        activeContainerColor = colors.primaryBlue,
                     ),
                 ) {
-                    Text(stringResource(R.string.theme_dark))
+                    Text(
+                        stringResource(R.string.theme_dark),
+                        color = if (currentTheme == 2) Color.White else colors.textGray
+                    )
                 }
             }
 

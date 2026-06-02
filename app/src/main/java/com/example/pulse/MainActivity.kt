@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
         val shouldListen = runBlocking { appPreferences.isListening.first() }
         SmsReceiver.setEnabled(this, shouldListen)
         if (shouldListen) {
-            MonitorService.start(this)
+            MonitorService.start(this, resetTime = false)
         }
 
         setContent {

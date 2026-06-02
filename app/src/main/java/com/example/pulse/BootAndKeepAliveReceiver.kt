@@ -28,7 +28,7 @@ class BootAndKeepAliveReceiver : BroadcastReceiver() {
 
         if (!MonitorService.isRunning()) {
             LogStore.w("MonitorService 未运行，尝试重启...")
-            MonitorService.start(context)
+            MonitorService.start(context, resetTime = false)
             // onStartCommand() 中会自动调度下一次保活，此处不再重复调度
         } else {
             LogStore.i("MonitorService 运行中，无需重启")
