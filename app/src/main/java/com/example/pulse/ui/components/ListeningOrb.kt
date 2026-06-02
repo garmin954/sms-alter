@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pulse.R
 import com.example.pulse.ui.theme.LocalAppColors
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.remember
 
 @Composable
 fun ListeningOrb(
@@ -85,7 +87,11 @@ fun ListeningOrb(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(240.dp)
-                .clickable { onClick() },
+                .clickable(
+                    // 关键：关闭默认水波纹阴影
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ){ onClick() },
         ) {
             // Ripple layer 3
             if (isListening && r3a > 0.001f) {
