@@ -15,7 +15,10 @@ import com.example.pulse.data.AppPreferences
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,6 +26,7 @@ import javax.inject.Inject
 class MonitorService : Service() {
 
     private lateinit var pendingIntent: PendingIntent
+    private var updateNotificationJob: Job? = null
 
     @Inject lateinit var appPreferences: AppPreferences
     private val serviceScope = CoroutineScope(Dispatchers.IO)
@@ -86,7 +90,7 @@ class MonitorService : Service() {
         )
 
         try {
-            startForeground(NOTIFICATION_ID, buildNotification())
+            startForeground(NOTIFICATION_ID, buildNotification(getElapsedMs()))
             LogStore.i("MonitorService 前台通知已显示")
         } catch (e: Exception) {
             LogStore.e("startForeground 失败: ${e.message}")
@@ -95,6 +99,14 @@ class MonitorService : Service() {
 
         LogStore.i("MonitorService 启动完成，关键词: ${KeywordStore.getInstance()?.getKeywords()?.joinToString() ?: ""}")
 
+        // 启动通知更新协程
+        updateNotificationJob = serviceScope.launch {
+            while (isActive) {
+                delay(1000)
+                updateNotification()
+            }
+        }
+
         // 调度保活闹钟
         KeepAliveScheduler.schedule(this)
 
@@ -102,6 +114,7 @@ class MonitorService : Service() {
     }
 
     override fun onDestroy() {
+        updateNotificationJob?.cancel()
         _isRunning = false
         _startTime = 0L
         serviceScope.launch {
@@ -119,18 +132,43 @@ class MonitorService : Service() {
         // stopWithTask="false" 应阻止服务被杀，但某些 ROM 仍会触发
     }
 
-    private fun buildNotification(): android.app.Notification {
-        val whenTime = System.currentTimeMillis() - getElapsedMs()
+    private fun formatDuration(ms: Long): String {
+        val totalSec = ms / 1000
+        val sec = totalSec % 60
+        val min = totalSec / 60 % 60
+        val hour = totalSec / 3600 % 24
+        val day = totalSec / 86400 % 30
+        val month = totalSec / 2592000 % 12
+        val year = totalSec / 31104000
+
+        return buildString {
+            if (year > 0) append("${year}年")
+            if (month > 0) append("${month}月")
+            if (day > 0) append("${day}天")
+            if (hour > 0) append("${hour}时")
+            if (min > 0) append("${min}分")
+            if (sec > 0 || isEmpty()) append("${sec}秒")
+        }
+    }
+
+    private fun buildNotification(elapsedMs: Long): android.app.Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.monitor_notification_title))
-            .setContentText(getString(R.string.monitor_notification_text))
+            .setContentText("运行时间: ${formatDuration(elapsedMs)}")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setContentIntent(pendingIntent)
-            .setUsesChronometer(true)
-            .setWhen(whenTime)
             .build()
+    }
+
+    private fun updateNotification() {
+        try {
+            val manager = getSystemService(NotificationManager::class.java)
+            manager.notify(NOTIFICATION_ID, buildNotification(getElapsedMs()))
+        } catch (e: Exception) {
+            LogStore.e("更新通知失败: ${e.message}")
+        }
     }
 
     private fun createChannel() {

@@ -33,14 +33,29 @@ class DashboardViewModel @Inject constructor(
     val isListening: StateFlow<Boolean> = appPreferences.isListening
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MonitorService.isRunning())
 
+    private fun formatDuration(ms: Long): String {
+        val totalSec = ms / 1000
+        val sec = totalSec % 60
+        val min = totalSec / 60 % 60
+        val hour = totalSec / 3600 % 24
+        val day = totalSec / 86400 % 30
+        val month = totalSec / 2592000 % 12
+        val year = totalSec / 31104000
+
+        return buildString {
+            if (year > 0) append("${year}年")
+            if (month > 0) append("${month}月")
+            if (day > 0) append("${day}天")
+            if (hour > 0) append("${hour}时")
+            if (min > 0) append("${min}分")
+            if (sec > 0 || isEmpty()) append("${sec}秒")
+        }
+    }
+
     val elapsedTime: StateFlow<String> = flow {
         while (true) {
             if (MonitorService.isRunning()) {
-                val totalSec = MonitorService.getElapsedMs() / 1000
-                val h = totalSec / 3600
-                val m = (totalSec % 3600) / 60
-                val s = totalSec % 60
-                emit(String.format("%02d:%02d:%02d", h, m, s))
+                emit(formatDuration(MonitorService.getElapsedMs()))
             } else {
                 emit("")
             }
